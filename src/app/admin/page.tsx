@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -135,6 +135,22 @@ export default function AdminConsolePage() {
   const [isSavingThesis, setIsSavingThesis] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState<boolean>(false);
+  const filterPopoverRef = useRef<HTMLDivElement>(null);
+
+  // Click outside listener for filter popover
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target as Node)) {
+        setIsFilterPopoverOpen(false);
+      }
+    }
+    if (isFilterPopoverOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isFilterPopoverOpen]);
 
   // Pagination State (25, 50, 100)
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -762,7 +778,7 @@ export default function AdminConsolePage() {
       {/* ==================================================================== */}
       {/* 3. TOOLBAR ACTIONS & LIVE FILTERS                                    */}
       {/* ==================================================================== */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs space-y-3">
+      <div className="relative z-30 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs space-y-3">
         {/* Row 1: Search & Primary Actions */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
           {/* Search Input */}
@@ -961,9 +977,9 @@ export default function AdminConsolePage() {
           </div>
 
           {/* Kelompok Kanan: Filter Tambahan, Urutkan, & Reset */}
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-2 relative z-30">
             {/* Advanced Filter Popover Trigger */}
-            <div className="relative">
+            <div ref={filterPopoverRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
@@ -985,119 +1001,113 @@ export default function AdminConsolePage() {
 
               {/* Popover Dropdown Menu */}
               {isFilterPopoverOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsFilterPopoverOpen(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl z-50 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
-                        Filter Tambahan
-                      </span>
-                      {activeAdvancedFiltersCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEntryPeriodFilter("");
-                            setBatchFilter("");
-                            setFileStatusFilter("");
-                            setGpaRangeFilter("");
-                          }}
-                          className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
-                        >
-                          Reset Filter
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-2.5 text-xs">
-                      {/* Periode Masuk */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Periode Masuk Spesifik
-                        </label>
-                        <select
-                          value={entryPeriodFilter}
-                          onChange={(e) => setEntryPeriodFilter(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">Semua Periode Masuk</option>
-                          {stats?.entryPeriods?.map((p) => (
-                            <option key={p} value={p}>
-                              Periode: {p}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Kode Batch Belmawa */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Kode Batch Belmawa
-                        </label>
-                        <select
-                          value={batchFilter}
-                          onChange={(e) => setBatchFilter(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">Semua Batch</option>
-                          {stats?.batches?.map((b) => (
-                            <option key={b} value={b}>
-                              {b}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Status Berkas Digital */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Status Berkas Ijazah & Transkrip
-                        </label>
-                        <select
-                          value={fileStatusFilter}
-                          onChange={(e) => setFileStatusFilter(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">Semua Status Berkas</option>
-                          <option value="has_both">Lengkap (Ijazah + Transkrip)</option>
-                          <option value="has_ijazah">Ada Ijazah Saja</option>
-                          <option value="has_transkrip">Ada Transkrip Saja</option>
-                          <option value="no_files">Belum Ada Berkas</option>
-                        </select>
-                      </div>
-
-                      {/* Rentang IPK */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Rentang IPK
-                        </label>
-                        <select
-                          value={gpaRangeFilter}
-                          onChange={(e) => setGpaRangeFilter(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">Semua Rentang IPK</option>
-                          <option value="cumlaude">Cum Laude (≥ 3.75)</option>
-                          <option value="sangat_memuaskan">Sangat Memuaskan (3.50 - 3.74)</option>
-                          <option value="memuaskan">Memuaskan (&lt; 3.50)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-white/10">
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl z-50 space-y-3 max-h-[85vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
+                      Filter Tambahan
+                    </span>
+                    {activeAdvancedFiltersCount > 0 && (
                       <button
                         type="button"
-                        onClick={() => setIsFilterPopoverOpen(false)}
-                        className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                        onClick={() => {
+                          setEntryPeriodFilter("");
+                          setBatchFilter("");
+                          setFileStatusFilter("");
+                          setGpaRangeFilter("");
+                        }}
+                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                       >
-                        Terapkan & Tutup
+                        Reset Filter
                       </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    {/* Periode Masuk */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Periode Masuk Spesifik
+                      </label>
+                      <select
+                        value={entryPeriodFilter}
+                        onChange={(e) => setEntryPeriodFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="">Semua Periode Masuk</option>
+                        {stats?.entryPeriods?.map((p) => (
+                          <option key={p} value={p}>
+                            Periode: {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Kode Batch Belmawa */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Kode Batch Belmawa
+                      </label>
+                      <select
+                        value={batchFilter}
+                        onChange={(e) => setBatchFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="">Semua Batch</option>
+                        {stats?.batches?.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Status Berkas Digital */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Status Berkas Ijazah & Transkrip
+                      </label>
+                      <select
+                        value={fileStatusFilter}
+                        onChange={(e) => setFileStatusFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="">Semua Status Berkas</option>
+                        <option value="has_both">Lengkap (Ijazah + Transkrip)</option>
+                        <option value="has_ijazah">Ada Ijazah Saja</option>
+                        <option value="has_transkrip">Ada Transkrip Saja</option>
+                        <option value="no_files">Belum Ada Berkas</option>
+                      </select>
+                    </div>
+
+                    {/* Rentang IPK */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Rentang IPK
+                      </label>
+                      <select
+                        value={gpaRangeFilter}
+                        onChange={(e) => setGpaRangeFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="">Semua Rentang IPK</option>
+                        <option value="cumlaude">Cum Laude (≥ 3.75)</option>
+                        <option value="sangat_memuaskan">Sangat Memuaskan (3.50 - 3.74)</option>
+                        <option value="memuaskan">Memuaskan (&lt; 3.50)</option>
+                      </select>
                     </div>
                   </div>
-                </>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setIsFilterPopoverOpen(false)}
+                      className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                      Terapkan & Tutup
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -1158,7 +1168,7 @@ export default function AdminConsolePage() {
       {/* 4. TABLE VIEW SELECTOR & REPOSITORY DATA TABLES                      */}
       {/* ==================================================================== */}
       {/* Table Mode Selector (Tab PISN vs Tab Judul Skripsi) */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5 flex-wrap gap-2">
+      <div className="relative z-10 flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5 flex-wrap gap-2">
         <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-white/5">
           <button
             type="button"
@@ -1200,7 +1210,7 @@ export default function AdminConsolePage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 backdrop-blur-xl shadow-xs overflow-hidden w-full">
+      <div className="relative z-0 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 backdrop-blur-xl shadow-xs overflow-hidden w-full">
         {activeTableTab === "skripsi" ? (
           /* TABEL KHUSUS JUDUL SKRIPSI & TESIS */
           <table className="w-full table-fixed text-left text-slate-700 dark:text-slate-300">
