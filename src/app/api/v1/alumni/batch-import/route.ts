@@ -10,17 +10,45 @@ function parseDateIndo(str?: string) {
     return direct;
   }
   const months: Record<string, number> = {
-    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
-    juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+    jan: 0, januari: 0,
+    feb: 1, februari: 1,
+    mar: 2, maret: 2,
+    apr: 3, april: 3,
+    mei: 4, may: 4,
+    jun: 5, juni: 5,
+    jul: 6, juli: 6,
+    ags: 7, agustus: 7, aug: 7,
+    sep: 8, september: 8,
+    okt: 9, oktober: 9, oct: 9,
+    nov: 10, november: 10,
+    des: 11, desember: 11, dec: 11,
   };
-  const parts = str.trim().split(/\s+/);
+  const clean = str.trim().toLowerCase();
+  const parts = clean.split(/[\s,.-]+/);
   if (parts.length >= 3) {
     const day = parseInt(parts[0], 10);
-    const month = months[parts[1].toLowerCase()] ?? 8;
+    const month = months[parts[1]] ?? 8;
     const year = parseInt(parts[2], 10) || 2026;
     return new Date(Date.UTC(year, month, day, 0, 0, 0));
   }
   return new Date();
+}
+
+function normalizePeriod(str?: string): string {
+  if (!str) return "";
+  const s = str.trim();
+  if (/^\d{4}-[12]$/.test(s)) return s;
+
+  const matchGenap = s.match(/(\d{4}).*genap/i);
+  if (matchGenap) return `${matchGenap[1]}-2`;
+
+  const matchGanjil = s.match(/(\d{4}).*ganjil/i);
+  if (matchGanjil) return `${matchGanjil[1]}-1`;
+
+  const matchSlash = s.match(/^(\d{4})\/\d{4}[-\s]?([12])/);
+  if (matchSlash) return `${matchSlash[1]}-${matchSlash[2]}`;
+
+  return s;
 }
 
 function getOfficialSkNumber(date: Date): string {
@@ -221,6 +249,13 @@ export async function POST(request: NextRequest) {
             if (cleanK === target.toLowerCase().replace(/[^a-z0-9]/g, "")) {
               const val = row[k];
               if (val instanceof Date) return val.toISOString().split("T")[0];
+              if (typeof val === "number") {
+                if (val > 30000 && val < 60000) {
+                  const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+                  return d.toISOString().split("T")[0];
+                }
+                return String(val);
+              }
               return val ? String(val).trim() : "";
             }
           }
@@ -228,19 +263,19 @@ export async function POST(request: NextRequest) {
         return "";
       };
 
-      const nim = getVal(["NIM", "Nomor Induk Mahasiswa"]);
-      const fullName = getVal(["Nama Lengkap", "Nama", "Nama Mahasiswa"]);
-      const prodiCodeInput = getVal(["Kode Prodi", "Prodi", "Program Studi"]);
-      const registrationTypeInput = getVal(["Jenis Pendaftar", "Jalur Masuk", "Status Pendaftar"]);
-      const entryPeriodInput = getVal(["Periode Masuk", "Semester Masuk", "Tahun Masuk"]);
-      const exitPeriodInput = getVal(["Periode Keluar", "Semester Keluar", "Tahun Lulus"]);
-      const yudisiumDateStr = getVal(["Tanggal Yudisium", "Tgl Yudisium", "Yudisium"]);
-      const thesisTitle = getVal(["Judul Skripsi", "Skripsi", "Tugas Akhir", "Judul Tesis"]);
-      const pisnNumber = getVal(["Nomor PISN", "PISN", "No PISN", "PIN", "Nomor PIN", "Nomor Ijazah"]);
-      const pisnBatchNumber = getVal(["Nomor Batch", "No Batch", "Batch"]);
-      const yudisiumDecreeNumber = getVal(["No SK Yudisium", "SK Yudisium", "Nomor SK"]);
-      const certificateNumber = getVal(["No Ijazah", "Nomor Ijazah", "No Seri Ijazah"]);
-      const gpaStr = getVal(["IPK", "Indeks Prestasi Kumulatif"]);
+      const nim = getVal(["NIM", "Nomor Induk Mahasiswa", "NIM Mahasiswa"]);
+      const fullName = getVal(["NAMA MAHASISWA", "Nama Lengkap", "Nama", "Nama Mahasiswa"]);
+      const prodiCodeInput = getVal(["PROGRAM STUDI", "Kode Prodi", "Prodi", "Program Studi"]);
+      const registrationTypeInput = getVal(["JALUR PENDAFTARAN", "Jenis Pendaftar", "Jalur Masuk", "Jalur", "Status Pendaftar"]);
+      const entryPeriodRaw = getVal(["PERIODE MASUK", "Periode Masuk", "Semester Masuk", "Tahun Masuk", "ANGKATAN", "Angkatan"]);
+      const exitPeriodRaw = getVal(["PERIODE KELUAR", "Periode Keluar", "Semester Keluar", "Tahun Lulus"]);
+      const yudisiumDateStr = getVal(["TANGGAL YUDISIUM", "Tanggal Yudisium", "Tgl Yudisium", "TANGGAL", "Tanggal", "Yudisium"]);
+      const thesisTitle = getVal(["JUDUL SKRIPSI / KARYA ILMIAH", "JUDUL SKRIPSI", "Judul Skripsi", "Skripsi", "Tugas Akhir", "Judul Tesis", "Karya Ilmiah"]);
+      const pisnNumber = getVal(["NOMOR PISN", "Nomor PISN", "PISN", "No PISN", "PIN", "Nomor PIN", "Nomor Ijazah", "NOMOR IJAZAH"]);
+      const pisnBatchNumber = getVal(["NOMOR BATCH BELMAWA", "Nomor Batch", "No Batch", "Batch"]);
+      const yudisiumDecreeNumber = getVal(["NOMOR SK YUDISIUM", "No SK Yudisium", "SK Yudisium", "Nomor SK", "NOMOR", "Nomor SK Yudisium", "SK"]);
+      const certificateNumber = getVal(["NOMOR SERI IJAZAH", "No Ijazah", "Nomor Ijazah", "No Seri Ijazah"]);
+      const gpaStr = getVal(["IPK", "Indeks Prestasi Kumulatif", "GPA"]);
 
       if (!nim || !fullName) {
         recordsFailed++;
@@ -282,7 +317,9 @@ export async function POST(request: NextRequest) {
       const graduationYear = yudisiumDate.getFullYear();
       const gpa = gpaStr ? parseFloat(gpaStr.replace(",", ".")) : null;
 
-      // Auto generate Entry & Exit Period format Opsi A if missing
+      // Auto generate & normalize Entry & Exit Period
+      const entryPeriodInput = normalizePeriod(entryPeriodRaw);
+      const exitPeriodInput = normalizePeriod(exitPeriodRaw);
       const nimPrefix = nim.substring(0, 2);
       const entryYear = parseInt(nimPrefix, 10) ? 2000 + parseInt(nimPrefix, 10) : graduationYear - 4;
       const entryPeriod = entryPeriodInput || `${entryYear}-1`;

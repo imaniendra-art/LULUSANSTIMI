@@ -843,6 +843,58 @@ export default function AdminConsolePage() {
     }
   };
 
+  // Unduh Format Template Excel Resmi (.xlsx)
+  const handleDownloadTemplate = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const templateData = [
+        {
+          "NO": 1,
+          "NIM": "2261201001",
+          "NAMA MAHASISWA": "NURHIKMAH",
+          "PROGRAM STUDI": "S1 Manajemen",
+          "JENJANG": "S1",
+          "JALUR PENDAFTARAN": "Peserta Didik Baru",
+          "PERIODE MASUK": "2022-1",
+          "PERIODE KELUAR": "2025-2",
+          "TANGGAL YUDISIUM": "2026-09-18",
+          "NOMOR SK YUDISIUM": "000.2/512/STIMI-YAPMI/MKS/IX/2026",
+          "NOMOR PISN": "093046612012026100074",
+          "NOMOR BATCH BELMAWA": "NI-09304661201266",
+          "NOMOR SERI IJAZAH": "093046612012026100074",
+          "IPK": 3.85,
+          "JUDUL SKRIPSI": "Pengaruh Budaya Organisasi Terhadap Kinerja Pegawai Pada STIMI YAPMI Makassar",
+        },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(templateData);
+
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 16 },
+        { wch: 30 },
+        { wch: 16 },
+        { wch: 10 },
+        { wch: 22 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 35 },
+        { wch: 25 },
+        { wch: 22 },
+        { wch: 25 },
+        { wch: 8 },
+        { wch: 55 },
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "TEMPLATE IMPORT DATA LULUSAN");
+      XLSX.writeFile(wb, "TEMPLATE_IMPORT_DATA_LULUSAN_STIMI.xlsx");
+    } catch (err) {
+      console.error("Gagal mengunduh template Excel:", err);
+    }
+  };
+
   if (!authChecked) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 text-xs font-mono">
@@ -1014,12 +1066,14 @@ export default function AdminConsolePage() {
                 setImportResult(null);
                 setRawTextPaste("");
                 setImportFile(null);
+                setImportMode("file");
                 setIsImportOpen(true);
               }}
               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 font-semibold text-xs transition cursor-pointer"
+              title="Impor data lulusan dari Excel (.xlsx) atau teks Belmawa"
             >
               <ClipboardPaste className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Impor Belmawa</span>
+              <span>Impor Data / PISN</span>
             </button>
 
             {/* Smart Contextual Export Button */}
@@ -1409,635 +1463,664 @@ export default function AdminConsolePage() {
       </div>
 
       <div className="relative z-0 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 backdrop-blur-xl shadow-xs overflow-hidden w-full">
-        {activeTableTab === "skripsi" ? (
-          /* TABEL KHUSUS JUDUL SKRIPSI & TESIS */
-          <table className="w-full table-fixed text-left text-slate-700 dark:text-slate-300">
-            <colgroup>
-              <col className="w-[3.5%]" />  {/* 0. No */}
-              <col className="w-[17%]" />   {/* 1. Mahasiswa */}
-              <col className="w-[9%]" />    {/* 2. Prodi */}
-              <col className="w-[31.5%]" /> {/* 3. Judul Skripsi */}
-              <col className="w-[7%]" />    {/* 4. Masuk */}
-              <col className="w-[7.5%]" />  {/* 5. Periode Keluar */}
-              <col className="w-[7.5%]" />  {/* 6. Tahun Keluar */}
-              <col className="w-[12%]" />   {/* 7. Yudisium & SK */}
-              <col className="w-[5%]" />    {/* 8. Aksi */}
-            </colgroup>
+        <div className="overflow-x-auto w-full scrollbar-thin">
+          {activeTableTab === "skripsi" ? (
+            /* TABEL KHUSUS JUDUL SKRIPSI & TESIS */
+            <table className="w-full table-fixed min-w-[1150px] text-left text-slate-700 dark:text-slate-300">
+              <colgroup>
+                <col className="w-[3.5%]" />  {/* 0. No */}
+                <col className="w-[17%]" />   {/* 1. Mahasiswa */}
+                <col className="w-[9.5%]" />  {/* 2. Prodi */}
+                <col className="w-[5.5%]" />  {/* 3. IPK (BARU) */}
+                <col className="w-[35%]" />   {/* 4. Judul Skripsi (LEBAR & TIDAK TERPOTONG) */}
+                <col className="w-[5.5%]" />  {/* 5. Masuk */}
+                <col className="w-[6%]" />    {/* 6. Periode Keluar */}
+                <col className="w-[6%]" />    {/* 7. Tahun Keluar */}
+                <col className="w-[12%]" />   {/* 8. Yudisium & SK */}
+                <col className="w-[5%]" />    {/* 9. Aksi */}
+              </colgroup>
 
-            <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
-              <tr>
-                <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
-                <th className="py-3 px-3 font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("name")}
-                    className={`flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "name" || sortBy === "nim" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                    title="Klik untuk mengurutkan Nama Mahasiswa"
-                  >
-                    <span>Mahasiswa</span>
-                    {renderSortIcon("name")}
-                  </button>
-                </th>
-                <th className="py-3 px-2 font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("prodi")}
-                    className={`flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>Prodi</span>
-                    {renderSortIcon("prodi")}
-                  </button>
-                </th>
-                <th className="py-3 px-3 font-semibold text-indigo-600 dark:text-indigo-400">
-                  Judul Skripsi / Karya Ilmiah Mahasiswa
-                </th>
-                <th className="py-3 px-2 font-semibold text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("entryPeriod")}
-                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                    title="Periode Masuk Mahasiswa"
-                  >
-                    <span>Masuk</span>
-                    {renderSortIcon("entryPeriod")}
-                  </button>
-                </th>
-                <th className="py-3 px-2 font-semibold text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("exitPeriod")}
-                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                    title="Periode Keluar / Lulus"
-                  >
-                    <span>P. Keluar</span>
-                    {renderSortIcon("exitPeriod")}
-                  </button>
-                </th>
-                <th className="py-3 px-2 font-semibold text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("graduationYear")}
-                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                    title="Tahun Keluar Kalender"
-                  >
-                    <span>Thn Keluar</span>
-                    {renderSortIcon("graduationYear")}
-                  </button>
-                </th>
-                <th className="py-3 px-2 font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => handleSort("yudisiumDate")}
-                    className={`flex items-center gap-1 group transition cursor-pointer ${
-                      sortBy === "yudisiumDate" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>Yudisium & SK</span>
-                    {renderSortIcon("yudisiumDate")}
-                  </button>
-                </th>
-                <th className="py-3 px-2 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
+              <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
+                <tr>
+                  <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
+                  <th className="py-3 px-3 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("name")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "name" || sortBy === "nim" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Nama Mahasiswa"
+                    >
+                      <span>Mahasiswa</span>
+                      {renderSortIcon("name")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("prodi")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <span>Prodi</span>
+                      {renderSortIcon("prodi")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("gpa")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "gpa" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Urutkan berdasarkan IPK"
+                    >
+                      <span>IPK</span>
+                      {renderSortIcon("gpa")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 font-semibold text-indigo-600 dark:text-indigo-400">
+                    Judul Skripsi / Karya Ilmiah Mahasiswa
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("entryPeriod")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Periode Masuk Mahasiswa"
+                    >
+                      <span>Masuk</span>
+                      {renderSortIcon("entryPeriod")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("exitPeriod")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Periode Keluar / Lulus"
+                    >
+                      <span>P. Keluar</span>
+                      {renderSortIcon("exitPeriod")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("graduationYear")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Tahun Keluar Kalender"
+                    >
+                      <span>Thn Keluar</span>
+                      {renderSortIcon("graduationYear")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("yudisiumDate")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "yudisiumDate" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <span>Yudisium & SK</span>
+                      {renderSortIcon("yudisiumDate")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-right">Aksi</th>
+                </tr>
+              </thead>
 
-            <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
-              {isLoading && graduates.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
-                    <p className="text-xs">Memuat repositori judul skripsi...</p>
-                  </td>
-                </tr>
-              ) : graduates.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                    <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
-                    <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci atau filter di atas.</p>
-                  </td>
-                </tr>
-              ) : (
-                graduates.map((alumni, idx) => (
-                  <tr
-                    key={alumni.id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition duration-150 group"
-                  >
-                    {/* 0. No */}
-                    <td className="py-3 px-2 text-center font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                      {(currentPage - 1) * pageSize + idx + 1}
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+                {isLoading && graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
+                      <p className="text-xs">Memuat repositori judul skripsi...</p>
                     </td>
+                  </tr>
+                ) : graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
+                      <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci atau filter di atas.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  graduates.map((alumni, idx) => (
+                    <tr
+                      key={alumni.id}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition duration-150 group"
+                    >
+                      {/* 0. No */}
+                      <td className="py-2.5 px-2 text-center font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
 
-                    {/* 1. Mahasiswa */}
-                    <td className="py-3 px-3">
-                      <p
-                        className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition"
-                        title={alumni.fullName}
-                      >
-                        {alumni.fullName}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {/* 1. Mahasiswa */}
+                      <td className="py-2.5 px-3">
+                        <p
+                          className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition"
+                          title={alumni.fullName}
+                        >
+                          {alumni.fullName}
+                        </p>
+                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                           {alumni.nim}
                         </span>
-                        {alumni.gpa && (
+                      </td>
+
+                      {/* 2. Prodi */}
+                      <td className="py-2.5 px-2">
+                        <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
+                          {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                          {alumni.degree || "S1"}
+                        </span>
+                      </td>
+
+                      {/* 3. IPK (Kolom Khusus & Rapi) */}
+                      <td className="py-2.5 px-2 text-center">
+                        {alumni.gpa !== null && alumni.gpa !== undefined ? (
                           <span
-                            className={`font-mono text-[9px] font-bold px-1 rounded border ${
+                            className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border inline-block ${
                               alumni.gpa >= 3.75
-                                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20"
+                                ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-2xs"
                                 : alumni.gpa >= 3.5
-                                ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20"
+                                ? "bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 shadow-2xs"
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                             }`}
-                            title={`IPK: ${alumni.gpa.toFixed(2)}`}
+                            title={`Indeks Prestasi Kumulatif: ${alumni.gpa.toFixed(2)}`}
                           >
-                            IPK {alumni.gpa.toFixed(2)}
+                            {alumni.gpa.toFixed(2)}
                           </span>
+                        ) : (
+                          <span className="font-mono text-xs text-slate-400">-</span>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* 2. Prodi */}
-                    <td className="py-3 px-2">
-                      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                        {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
-                      </span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
-                        {alumni.degree || "S1"}
-                      </span>
-                    </td>
+                      {/* 4. Judul Skripsi (LEBAR, UTUH, TIDAK ADA YANG TERSEMBUNYI) */}
+                      <td className="py-2.5 px-3">
+                        {editingThesisId === alumni.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <textarea
+                              rows={2}
+                              value={editingThesisTitle}
+                              onChange={(e) => setEditingThesisTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveThesis(alumni.id);
+                                }
+                                if (e.key === "Escape") handleCancelEditThesis();
+                              }}
+                              autoFocus
+                              disabled={isSavingThesis}
+                              className="w-full p-2 bg-white dark:bg-slate-950 border border-indigo-500 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none ring-2 ring-indigo-500/30 resize-none leading-relaxed"
+                              placeholder="Ketik judul skripsi / karya ilmiah..."
+                            />
+                            <div className="flex flex-col gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveThesis(alumni.id)}
+                                disabled={isSavingThesis}
+                                title="Simpan Judul Skripsi"
+                                className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex-shrink-0 cursor-pointer"
+                              >
+                                {isSavingThesis ? (
+                                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditThesis}
+                                disabled={isSavingThesis}
+                                title="Batal"
+                                className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex-shrink-0 cursor-pointer"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => handleStartEditThesis(alumni)}
+                            className="group/thesis flex items-start justify-between gap-2 p-2 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/50 dark:border-white/[0.04] hover:border-indigo-300 dark:hover:border-indigo-500/30 cursor-pointer transition w-full"
+                            title="Klik untuk mengedit judul skripsi ini secara langsung"
+                          >
+                            <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed whitespace-normal break-words w-full">
+                              {alumni.thesisTitle ? (
+                                `"${alumni.thesisTitle}"`
+                              ) : (
+                                <span className="text-slate-400 italic font-normal">Belum ada judul skripsi - Klik untuk mengisi</span>
+                              )}
+                            </p>
+                            <button
+                              type="button"
+                              className="opacity-0 group-hover/thesis:opacity-100 p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded transition flex-shrink-0 cursor-pointer"
+                              title="Edit Judul"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
 
-                    {/* 3. Judul Skripsi (Inline Editable & Clear Wide Text) */}
-                    <td className="py-3 px-3">
-                      {editingThesisId === alumni.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={editingThesisTitle}
-                            onChange={(e) => setEditingThesisTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSaveThesis(alumni.id);
-                              if (e.key === "Escape") handleCancelEditThesis();
-                            }}
-                            autoFocus
-                            disabled={isSavingThesis}
-                            className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-950 border border-indigo-500 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none ring-2 ring-indigo-500/30"
-                            placeholder="Ketik judul skripsi / karya ilmiah..."
-                          />
+                      {/* 5. Periode Masuk */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                          {alumni.entryPeriod || "-"}
+                        </span>
+                      </td>
+
+                      {/* 6. Periode Keluar */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                          {alumni.exitPeriod || "-"}
+                        </span>
+                      </td>
+
+                      {/* 7. Tahun Keluar (Angka Tahun Kalender) */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                          {getTahunKeluar(alumni)}
+                        </span>
+                      </td>
+
+                      {/* 8. Tanggal Yudisium & SK */}
+                      <td className="py-2.5 px-2">
+                        <p className="font-mono text-[11px] font-semibold text-slate-900 dark:text-slate-100 truncate">
+                          {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                        </p>
+                        <p
+                          className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5"
+                          title={alumni.yudisiumDecreeNumber || ""}
+                        >
+                          {alumni.yudisiumDecreeNumber || "-"}
+                        </p>
+                      </td>
+
+                      {/* 9. Aksi */}
+                      <td className="py-2.5 px-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => handleSaveThesis(alumni.id)}
-                            disabled={isSavingThesis}
-                            title="Simpan Judul Skripsi"
-                            className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex-shrink-0 cursor-pointer"
+                            onClick={() => handleStartEditThesis(alumni)}
+                            className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition cursor-pointer"
                           >
-                            {isSavingThesis ? (
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Check className="h-3.5 w-3.5" />
-                            )}
+                            Ubah
                           </button>
                           <button
                             type="button"
-                            onClick={handleCancelEditThesis}
-                            disabled={isSavingThesis}
-                            title="Batal"
-                            className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex-shrink-0 cursor-pointer"
+                            onClick={() => handleOpenPreview(alumni)}
+                            title="Lihat Detail Lengkap"
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <Eye className="h-3 w-3" />
                           </button>
                         </div>
-                      ) : (
-                        <div
-                          onClick={() => handleStartEditThesis(alumni)}
-                          className="group/thesis flex items-start justify-between gap-2 p-2 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/50 dark:border-white/[0.04] hover:border-indigo-300 dark:hover:border-indigo-500/30 cursor-pointer transition"
-                          title="Klik untuk mengedit judul skripsi ini secara langsung"
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            /* TABEL REPOSITORI PISN & STATUS IJAZAH (PROPORSIONAL, RAPI & BEBAS GAP JARANG) */
+            <table className="w-full table-fixed min-w-[1150px] text-left text-slate-700 dark:text-slate-300">
+              <colgroup>
+                <col className="w-[3.5%]" />  {/* 0. No */}
+                <col className="w-[19%]" />   {/* 1. Mahasiswa */}
+                <col className="w-[13%]" />   {/* 2. Prodi & Jalur */}
+                <col className="w-[5.5%]" />  {/* 3. Masuk */}
+                <col className="w-[6%]" />    {/* 4. Periode Keluar */}
+                <col className="w-[6%]" />    {/* 5. Tahun Keluar */}
+                <col className="w-[17%]" />   {/* 6. Kelulusan & SK */}
+                <col className="w-[18%]" />   {/* 7. PISN & Batch */}
+                <col className="w-[5.5%]" />  {/* 8. Berkas */}
+                <col className="w-[6.5%]" />  {/* 9. Aksi */}
+              </colgroup>
+
+              <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
+                <tr>
+                  <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
+                  <th className="py-3 px-3 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("name")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "name" || sortBy === "nim" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Nama Mahasiswa"
+                    >
+                      <span>Mahasiswa</span>
+                      {renderSortIcon("name")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("prodi")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Program Studi"
+                    >
+                      <span>Prodi & Jalur</span>
+                      {renderSortIcon("prodi")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("entryPeriod")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Periode Masuk Mahasiswa"
+                    >
+                      <span>Masuk</span>
+                      {renderSortIcon("entryPeriod")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("exitPeriod")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Periode Keluar / Lulus"
+                    >
+                      <span>P. Keluar</span>
+                      {renderSortIcon("exitPeriod")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("graduationYear")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Tahun Keluar Kalender"
+                    >
+                      <span>Thn Keluar</span>
+                      {renderSortIcon("graduationYear")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("yudisiumDate")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "yudisiumDate" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Tanggal Yudisium"
+                    >
+                      <span>Kelulusan & SK</span>
+                      {renderSortIcon("yudisiumDate")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("pisnNumber")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "pisnNumber" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Nomor PISN"
+                    >
+                      <span>PISN & Batch</span>
+                      {renderSortIcon("pisnNumber")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-1 font-semibold text-center">Berkas</th>
+                  <th className="py-3 px-2 font-semibold text-right">Aksi</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+                {isLoading && graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
+                      <p className="text-xs">Memuat data lulusan dari MongoDB...</p>
+                    </td>
+                  </tr>
+                ) : graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Coba ganti kata kunci pencarian atau ubah filter di atas.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  graduates.map((alumni, idx) => (
+                    <tr
+                      key={alumni.id}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition duration-150 group"
+                    >
+                      {/* 0. No Urut */}
+                      <td className="py-2.5 px-2 text-center font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
+                      {/* 1. Mahasiswa Info */}
+                      <td className="py-2.5 px-3">
+                        <p
+                          className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition"
+                          title={alumni.fullName}
                         >
-                          <p className="text-xs text-slate-800 dark:text-slate-200 italic leading-relaxed break-words font-medium">
-                            "{alumni.thesisTitle || "Belum ada judul skripsi - Klik untuk mengisi"}"
+                          {alumni.fullName}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                            {alumni.nim}
+                          </span>
+                          {alumni.gpa && (
+                            <span
+                              className={`font-mono text-[9px] font-bold px-1 rounded border ${
+                                alumni.gpa >= 3.75
+                                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20"
+                                  : alumni.gpa >= 3.5
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                              }`}
+                              title={`Indeks Prestasi Kumulatif: ${alumni.gpa.toFixed(2)}`}
+                            >
+                              IPK {alumni.gpa.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 2. Program Studi & Jalur */}
+                      <td className="py-2.5 px-2">
+                        <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
+                          {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
+                        </span>
+                        <div className="mt-0.5">
+                          {alumni.registrationType === "RPL_PEROLEHAN_SKS" || alumni.registrationType === "RPL_KONVERSI_SKS" ? (
+                            <span className="inline-block text-[10px] font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 px-1.5 py-0.2 rounded truncate">
+                              RPL Perolehan
+                            </span>
+                          ) : alumni.registrationType === "RPL_TRANSFER_SKS" || alumni.registrationType === "KONVERSI_TRANSFER_NILAI" ? (
+                            <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-1.5 py-0.2 rounded truncate">
+                              RPL Transfer
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-1.5 py-0.2 rounded truncate">
+                              Peserta Baru
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 3. Periode Masuk */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                          {alumni.entryPeriod || "-"}
+                        </span>
+                      </td>
+
+                      {/* 4. Periode Keluar */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                          {alumni.exitPeriod || "-"}
+                        </span>
+                      </td>
+
+                      {/* 5. Tahun Keluar */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                          {getTahunKeluar(alumni)}
+                        </span>
+                      </td>
+
+                      {/* 6. Kelulusan & SK Yudisium */}
+                      <td className="py-2.5 px-2">
+                        <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100">
+                          {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                        </p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span
+                            className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate block max-w-[160px]"
+                            title={alumni.yudisiumDecreeNumber || ""}
+                          >
+                            {alumni.yudisiumDecreeNumber || "-"}
+                          </span>
+                          {alumni.yudisiumDecreeNumber && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(alumni.yudisiumDecreeNumber!)}
+                              title="Salin No SK Yudisium"
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded transition flex-shrink-0 cursor-pointer"
+                            >
+                              <Copy className="h-2.5 w-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 7. Nomor PISN & Batch */}
+                      <td className="py-2.5 px-2">
+                        {alumni.pisnNumber ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 truncate block">
+                              {alumni.pisnNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(alumni.pisnNumber!)}
+                              title="Salin Nomor PISN"
+                              className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition flex-shrink-0 cursor-pointer"
+                            >
+                              {copiedPisn === alumni.pisnNumber ? (
+                                <Check className="h-3 w-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">Belum Ada PISN</span>
+                        )}
+                        {alumni.pisnBatchNumber ? (
+                          <p className="font-mono text-[9px] text-indigo-600 dark:text-indigo-400/90 mt-0.5 truncate" title={`Batch Belmawa: ${alumni.pisnBatchNumber}`}>
+                            Batch: {alumni.pisnBatchNumber}
                           </p>
+                        ) : (
+                          <p className="text-[9px] text-slate-400 mt-0.5">Batch: -</p>
+                        )}
+                      </td>
+
+                      {/* 8. Berkas Server */}
+                      <td className="py-2.5 px-1">
+                        <div className="flex items-center gap-1 justify-center">
+                          {alumni.ijazahScan ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPreview(alumni, "ijazah")}
+                              title="Lihat Scan Ijazah"
+                              className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[9px] font-mono font-bold cursor-pointer"
+                            >
+                              IJZ
+                            </button>
+                          ) : (
+                            <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Ijazah belum diunggah">
+                              -
+                            </span>
+                          )}
+
+                          {alumni.transkripScan ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPreview(alumni, "transkrip")}
+                              title="Lihat Scan Transkrip"
+                              className="px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold cursor-pointer"
+                            >
+                              TRK
+                            </button>
+                          ) : (
+                            <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Transkrip belum diunggah">
+                              -
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 9. Actions */}
+                      <td className="py-2.5 px-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            className="opacity-0 group-hover/thesis:opacity-100 p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded transition flex-shrink-0 cursor-pointer"
-                            title="Edit Judul"
+                            onClick={() => handleOpenPreview(alumni)}
+                            title="Lihat Detail & Berkas"
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition cursor-pointer"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(alumni)}
+                            title="Edit Data & Unggah Berkas"
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition cursor-pointer"
                           >
                             <Edit2 className="h-3 w-3" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(alumni.id, alumni.nim)}
+                            title="Hapus Data"
+                            className="p-1 rounded bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-500/20 text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition cursor-pointer"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
-                      )}
-                    </td>
-
-                    {/* 4. Periode Masuk */}
-                    <td className="py-3 px-2 text-center">
-                      <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
-                        {alumni.entryPeriod || "-"}
-                      </span>
-                    </td>
-
-                    {/* 5. Periode Keluar */}
-                    <td className="py-3 px-2 text-center">
-                      <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
-                        {alumni.exitPeriod || "-"}
-                      </span>
-                    </td>
-
-                    {/* 6. Tahun Keluar (Angka Tahun Kalender) */}
-                    <td className="py-3 px-2 text-center">
-                      <span className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
-                        {getTahunKeluar(alumni)}
-                      </span>
-                    </td>
-
-                    {/* 7. Tanggal Yudisium & SK */}
-                    <td className="py-3 px-2">
-                      <p className="font-mono text-[11px] font-semibold text-slate-900 dark:text-slate-100 truncate">
-                        {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-                      </p>
-                      <p
-                        className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5"
-                        title={alumni.yudisiumDecreeNumber || ""}
-                      >
-                        {alumni.yudisiumDecreeNumber || "-"}
-                      </p>
-                    </td>
-
-                    {/* 8. Aksi */}
-                    <td className="py-3 px-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditThesis(alumni)}
-                          className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition cursor-pointer"
-                        >
-                          Ubah Judul
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPreview(alumni)}
-                          title="Lihat Detail Lengkap"
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                        >
-                          <Eye className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        ) : (
-          /* TABEL REPOSITORI PISN & STATUS IJAZAH (10 KOLOM DENGAN NOMOR URUT) */
-        <table className="w-full table-fixed text-left text-slate-700 dark:text-slate-300">
-          <colgroup>
-            <col className="w-[3.5%]" /> {/* 0. No */}
-            <col className="w-[18%]" />   {/* 1. Mahasiswa */}
-            <col className="w-[12%]" />   {/* 2. Prodi & Jalur */}
-            <col className="w-[6.5%]" />  {/* 3. Masuk */}
-            <col className="w-[7%]" />    {/* 4. Periode Keluar */}
-            <col className="w-[7.5%]" />  {/* 5. Tahun Keluar */}
-            <col className="w-[16%]" />   {/* 6. Kelulusan & SK */}
-            <col className="w-[17%]" />   {/* 7. PISN & Batch */}
-            <col className="w-[6%]" />    {/* 8. Berkas */}
-            <col className="w-[6.5%]" />  {/* 9. Aksi */}
-          </colgroup>
-
-          <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
-            <tr>
-              <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
-              <th className="py-3 px-3 font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleSort("name")}
-                  className={`flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "name" || sortBy === "nim" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Klik untuk mengurutkan Nama Mahasiswa"
-                >
-                  <span>Mahasiswa</span>
-                  {renderSortIcon("name")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleSort("prodi")}
-                  className={`flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Klik untuk mengurutkan Program Studi"
-                >
-                  <span>Prodi & Jalur</span>
-                  {renderSortIcon("prodi")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold text-center">
-                <button
-                  type="button"
-                  onClick={() => handleSort("entryPeriod")}
-                  className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Periode Masuk Mahasiswa"
-                >
-                  <span>Masuk</span>
-                  {renderSortIcon("entryPeriod")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold text-center">
-                <button
-                  type="button"
-                  onClick={() => handleSort("exitPeriod")}
-                  className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Periode Keluar / Lulus"
-                >
-                  <span>P. Keluar</span>
-                  {renderSortIcon("exitPeriod")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold text-center">
-                <button
-                  type="button"
-                  onClick={() => handleSort("graduationYear")}
-                  className={`inline-flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Tahun Keluar Kalender"
-                >
-                  <span>Thn Keluar</span>
-                  {renderSortIcon("graduationYear")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleSort("yudisiumDate")}
-                  className={`flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "yudisiumDate" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Klik untuk mengurutkan Tanggal Yudisium"
-                >
-                  <span>Kelulusan & SK</span>
-                  {renderSortIcon("yudisiumDate")}
-                </button>
-              </th>
-              <th className="py-3 px-2 font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleSort("pisnNumber")}
-                  className={`flex items-center gap-1 group transition cursor-pointer ${
-                    sortBy === "pisnNumber" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                  title="Klik untuk mengurutkan Nomor PISN"
-                >
-                  <span>PISN & Batch</span>
-                  {renderSortIcon("pisnNumber")}
-                </button>
-              </th>
-              <th className="py-3 px-1 font-semibold text-center">Berkas</th>
-              <th className="py-3 px-2 font-semibold text-right">Aksi</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
-            {isLoading && graduates.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                  <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
-                  <p className="text-xs">Memuat data lulusan dari MongoDB...</p>
-                </td>
-              </tr>
-            ) : graduates.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                  <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Coba ganti kata kunci pencarian atau ubah filter di atas.
-                  </p>
-                </td>
-              </tr>
-            ) : (
-              graduates.map((alumni, idx) => (
-                <tr
-                  key={alumni.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition duration-150 group"
-                >
-                  {/* 0. No Urut */}
-                  <td className="py-2.5 px-2 text-center font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                    {(currentPage - 1) * pageSize + idx + 1}
-                  </td>
-
-                  {/* 1. Mahasiswa Info */}
-                  <td className="py-2.5 px-3">
-                    <p
-                      className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition"
-                      title={alumni.fullName}
-                    >
-                      {alumni.fullName}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                        {alumni.nim}
-                      </span>
-                      {alumni.gpa && (
-                        <span
-                          className={`font-mono text-[9px] font-bold px-1 rounded border ${
-                            alumni.gpa >= 3.75
-                              ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20"
-                              : alumni.gpa >= 3.5
-                              ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                          }`}
-                          title={`Indeks Prestasi Kumulatif: ${alumni.gpa.toFixed(2)}`}
-                        >
-                          IPK {alumni.gpa.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* 2. Program Studi & Jalur */}
-                  <td className="py-2.5 px-2">
-                    <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                      {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
-                    </span>
-                    <div className="mt-0.5">
-                      {alumni.registrationType === "RPL_PEROLEHAN_SKS" || alumni.registrationType === "RPL_KONVERSI_SKS" ? (
-                        <span className="inline-block text-[10px] font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 px-1.5 py-0.2 rounded truncate">
-                          RPL Perolehan
-                        </span>
-                      ) : alumni.registrationType === "RPL_TRANSFER_SKS" || alumni.registrationType === "KONVERSI_TRANSFER_NILAI" ? (
-                        <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-1.5 py-0.2 rounded truncate">
-                          RPL Transfer
-                        </span>
-                      ) : (
-                        <span className="inline-block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-1.5 py-0.2 rounded truncate">
-                          Peserta Baru
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* 3. Periode Masuk */}
-                  <td className="py-2.5 px-2 text-center">
-                    <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
-                      {alumni.entryPeriod || "-"}
-                    </span>
-                  </td>
-
-                  {/* 4. Periode Keluar */}
-                  <td className="py-2.5 px-2 text-center">
-                    <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
-                      {alumni.exitPeriod || "-"}
-                    </span>
-                  </td>
-
-                  {/* 5. Tahun Keluar */}
-                  <td className="py-2.5 px-2 text-center">
-                    <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
-                      {getTahunKeluar(alumni)}
-                    </span>
-                  </td>
-
-                  {/* 6. Kelulusan & SK Yudisium */}
-                  <td className="py-2.5 px-2">
-                    <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100">
-                      {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-                    </p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span
-                        className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate block max-w-[160px]"
-                        title={alumni.yudisiumDecreeNumber || ""}
-                      >
-                        {alumni.yudisiumDecreeNumber || "-"}
-                      </span>
-                      {alumni.yudisiumDecreeNumber && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(alumni.yudisiumDecreeNumber!)}
-                          title="Salin No SK Yudisium"
-                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded transition flex-shrink-0 cursor-pointer"
-                        >
-                          <Copy className="h-2.5 w-2.5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* 5. Nomor PISN & Batch */}
-                  <td className="py-2.5 px-2">
-                    {alumni.pisnNumber ? (
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 truncate block">
-                          {alumni.pisnNumber}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(alumni.pisnNumber!)}
-                          title="Salin Nomor PISN"
-                          className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition flex-shrink-0 cursor-pointer"
-                        >
-                          {copiedPisn === alumni.pisnNumber ? (
-                            <Check className="h-3 w-3 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 italic">Belum Ada PISN</span>
-                    )}
-                    {alumni.pisnBatchNumber ? (
-                      <p className="font-mono text-[9px] text-indigo-600 dark:text-indigo-400/90 mt-0.5 truncate" title={`Batch Belmawa: ${alumni.pisnBatchNumber}`}>
-                        Batch: {alumni.pisnBatchNumber}
-                      </p>
-                    ) : (
-                      <p className="text-[9px] text-slate-400 mt-0.5">Batch: -</p>
-                    )}
-                  </td>
-
-                  {/* 6. Berkas Server */}
-                  <td className="py-2.5 px-1">
-                    <div className="flex items-center gap-1 justify-center">
-                      {alumni.ijazahScan ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPreview(alumni, "ijazah")}
-                          title="Lihat Scan Ijazah"
-                          className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[9px] font-mono font-bold cursor-pointer"
-                        >
-                          IJZ
-                        </button>
-                      ) : (
-                        <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Ijazah belum diunggah">
-                          -
-                        </span>
-                      )}
-
-                      {alumni.transkripScan ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPreview(alumni, "transkrip")}
-                          title="Lihat Scan Transkrip"
-                          className="px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold cursor-pointer"
-                        >
-                          TRK
-                        </button>
-                      ) : (
-                        <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Transkrip belum diunggah">
-                          -
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* 7. Actions */}
-                  <td className="py-2.5 px-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPreview(alumni)}
-                        title="Lihat Detail & Berkas"
-                        className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition cursor-pointer"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(alumni)}
-                        title="Edit Data & Unggah Berkas"
-                        className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition cursor-pointer"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(alumni.id, alumni.nim)}
-                        title="Hapus Data"
-                        className="p-1 rounded bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-500/20 text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition cursor-pointer"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         {/* Pagination & Footer Controls */}
         <div className="p-3 bg-slate-50/90 dark:bg-slate-950/90 border-t border-slate-200 dark:border-white/[0.08] flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
@@ -2612,45 +2695,59 @@ export default function AdminConsolePage() {
             {/* Header */}
             <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                  Impor Data Penomoran Ijazah Nasional (PISN Belmawa)
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Impor Data Lulusan & PISN</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Tempel teks hasil unduh Belmawa Dikti atau unggah file spreadsheet .xlsx
+                  Unggah file spreadsheet Excel (.xlsx) sesuai permintaan sistem atau tempel teks Belmawa
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsImportOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Mode Switcher */}
-            <div className="px-4 pt-3 pb-2 bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-white/[0.06] flex items-center gap-2">
+            {/* Mode Switcher & Template Download Button */}
+            <div className="px-4 py-2.5 bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setImportMode("file")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    importMode === "file"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900"
+                  }`}
+                >
+                  Unggah Spreadsheet (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportMode("paste")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    importMode === "paste"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900"
+                  }`}
+                >
+                  Tempel Teks Belmawa
+                </button>
+              </div>
+
+              {/* Unduh Format Template Excel Resmi */}
               <button
                 type="button"
-                onClick={() => setImportMode("paste")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                  importMode === "paste"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900"
-                }`}
+                onClick={handleDownloadTemplate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                title="Unduh file format template Excel (.xlsx) yang persis dengan permintaan sistem"
               >
-                Tempel Teks Belmawa (Multi-Batch)
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportMode("file")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                  importMode === "file"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900"
-                }`}
-              >
-                Unggah File Spreadsheet (.xlsx)
+                <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Unduh Format Template Excel (.xlsx)</span>
               </button>
             </div>
 
@@ -2693,22 +2790,82 @@ export default function AdminConsolePage() {
                   </p>
                 </div>
               ) : (
-                <div className="p-6 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-indigo-500/50 rounded-2xl text-center space-y-3 bg-slate-50/50 dark:bg-slate-950/40 transition">
-                  <FileSpreadsheet className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mx-auto" />
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      Pilih file spreadsheet Excel Belmawa
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Mendukung kolom: NIM, Nama Lengkap, Jenis Pendaftar, Periode Masuk, Periode Keluar, No SK Yudisium, Tanggal Yudisium, Nomor PISN, Nomor Batch (.xlsx)
+                <div className="space-y-4">
+                  <div className="p-6 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-indigo-500/50 rounded-2xl text-center space-y-3 bg-slate-50/50 dark:bg-slate-950/40 transition">
+                    <FileSpreadsheet className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mx-auto" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Pilih file spreadsheet Excel (.xlsx / .xls)
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Format kolom telah diselaraskan dengan permintaan dan ekspor sistem STIMI YAPMI.
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                      className="text-xs text-slate-600 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Panduan Format Kolom Permintaan Sistem */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/[0.08] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        Daftar Kolom Permintaan Sistem:
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        *Wajib diisi
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[10px] font-mono">
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-between">
+                        <span className="text-indigo-600 dark:text-indigo-400 font-bold">NIM</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-between">
+                        <span className="text-indigo-600 dark:text-indigo-400 font-bold">NAMA MAHASISWA</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        PROGRAM STUDI
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        JALUR PENDAFTARAN
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        PERIODE MASUK
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        PERIODE KELUAR
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        TANGGAL YUDISIUM
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        NOMOR SK YUDISIUM
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        NOMOR PISN
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        NOMOR BATCH BELMAWA
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        IPK
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 text-slate-700 dark:text-slate-300">
+                        JUDUL SKRIPSI
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 pt-1">
+                      Catatan: Sistem juga otomatis mengenali nama kolom lama (seperti <em>ANGKATAN</em>, <em>NOMOR</em>, <em>TANGGAL</em>, <em>Jalur</em>) dan secara otomatis mengonversi format periode (misal: <em>2024 GENAP</em> menjadi <em>2024-2</em>).
                     </p>
                   </div>
-                  <input
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                    className="text-xs text-slate-600 dark:text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-                  />
                 </div>
               )}
 
