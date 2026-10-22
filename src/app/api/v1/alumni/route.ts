@@ -51,7 +51,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (year) {
-      where.graduationYear = parseInt(year, 10);
+      const yearNum = parseInt(year, 10);
+      const startOfYear = new Date(`${yearNum}-01-01T00:00:00.000Z`);
+      const endOfYear = new Date(`${yearNum}-12-31T23:59:59.999Z`);
+      const prevYear = yearNum - 1;
+
+      const yearCondition = {
+        OR: [
+          { graduationYear: yearNum },
+          { yudisiumDate: { gte: startOfYear, lte: endOfYear } },
+          { exitPeriod: { startsWith: `${yearNum}-1` } },
+          { exitPeriod: { startsWith: `${prevYear}-2` } },
+        ],
+      };
+      if (Array.isArray(where.AND)) {
+        where.AND.push(yearCondition);
+      } else if (where.AND) {
+        where.AND = [where.AND, yearCondition];
+      } else {
+        where.AND = [yearCondition];
+      }
     }
 
     if (entryPeriodParam) {

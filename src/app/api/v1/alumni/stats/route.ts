@@ -84,6 +84,8 @@ export async function GET() {
         select: {
           yudisiumDate: true,
           entryPeriod: true,
+          exitPeriod: true,
+          graduationYear: true,
           cohortYear: true,
           yudisiumDecreeNumber: true,
         },
@@ -106,6 +108,7 @@ export async function GET() {
     const yudisiumCounts: Record<string, number> = {};
     const yudisiumSkMap: Record<string, string> = {};
     const cohortCounts: Record<string, number> = {};
+    const graduationYearCounts: Record<string, number> = {};
 
     for (const r of allRecords) {
       if (r.yudisiumDate) {
@@ -127,9 +130,30 @@ export async function GET() {
       if (cYear) {
         cohortCounts[cYear] = (cohortCounts[cYear] || 0) + 1;
       }
+
+      // Hitung Tahun Keluar Kalender
+      let gradY: number | null = null;
+      if (r.yudisiumDate) {
+        const y = new Date(r.yudisiumDate).getFullYear();
+        if (!isNaN(y) && y > 2000) gradY = y;
+      }
+      if (!gradY && r.graduationYear) gradY = r.graduationYear;
+      if (!gradY && r.exitPeriod) {
+        const match = r.exitPeriod.match(/^(\d{4})[-/]?([12])/);
+        if (match) {
+          const year = parseInt(match[1], 10);
+          const sem = match[2];
+          gradY = sem === "2" ? year + 1 : year;
+        }
+      }
+      if (gradY) {
+        const yStr = gradY.toString();
+        graduationYearCounts[yStr] = (graduationYearCounts[yStr] || 0) + 1;
+      }
     }
 
     const cohorts = Object.keys(cohortCounts).sort();
+    const graduationYears = Object.keys(graduationYearCounts).sort((a, b) => b.localeCompare(a));
 
     return NextResponse.json({
       success: true,
@@ -146,6 +170,8 @@ export async function GET() {
         yudisiumSkMap,
         cohorts,
         cohortCounts,
+        graduationYears,
+        graduationYearCounts,
         entryPeriods,
         prodi: {
           s1Manajemen: s1ManajemenCount,

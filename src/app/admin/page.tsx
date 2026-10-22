@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -91,6 +91,8 @@ interface StatsData {
   yudisiumSkMap?: Record<string, string>;
   cohorts?: string[];
   cohortCounts?: Record<string, number>;
+  graduationYears?: string[];
+  graduationYearCounts?: Record<string, number>;
   entryPeriods?: string[];
   prodi: {
     s1Manajemen: number;
@@ -103,6 +105,101 @@ interface StatsData {
     rplTransfer?: number;
     transfer: number;
   };
+}
+
+// Reusable Smooth Rounded Filter Dropdown (Bebas dari sudut tajam & responsif)
+function FilterDropdown<T extends string = string>({
+  value,
+  onChange,
+  options,
+  placeholder = "Pilih",
+  className = "",
+  panelWidth = "min-w-[180px]",
+  align = "left",
+  title,
+  isActive,
+}: {
+  value: T;
+  onChange: (val: T) => void;
+  options: Array<{ value: T; label: string }>;
+  placeholder?: string;
+  className?: string;
+  panelWidth?: string;
+  align?: "left" | "right";
+  title?: string;
+  isActive?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectedOption = options.find((o) => o.value === value);
+  const isHighlighted = isActive !== undefined ? isActive : Boolean(value);
+
+  return (
+    <div ref={dropdownRef} className={`relative inline-block ${className}`}>
+      <button
+        type="button"
+        title={title}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition focus:outline-none ${
+          isHighlighted
+            ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold shadow-2xs"
+            : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+        }`}
+      >
+        <span className="truncate max-w-[160px] text-left">
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`h-3 w-3 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+            isOpen ? "rotate-180 text-indigo-500" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className={`absolute ${align === "right" ? "right-0" : "left-0"} top-full mt-1.5 ${panelWidth} max-w-[340px] p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-xl z-50 max-h-64 overflow-y-auto space-y-0.5`}
+        >
+          {options.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition cursor-pointer ${
+                  active
+                    ? "bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {active && <Check className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminConsolePage() {
@@ -121,6 +218,7 @@ export default function AdminConsolePage() {
   const [pisnFilter, setPisnFilter] = useState("");
   const [cohortFilter, setCohortFilter] = useState("");
   const [yudisiumFilter, setYudisiumFilter] = useState("");
+  const [graduationYearFilter, setGraduationYearFilter] = useState("");
   const [entryPeriodFilter, setEntryPeriodFilter] = useState("");
   const [fileStatusFilter, setFileStatusFilter] = useState("");
   const [gpaRangeFilter, setGpaRangeFilter] = useState("");
@@ -172,6 +270,7 @@ export default function AdminConsolePage() {
     pisnFilter ||
     cohortFilter ||
     yudisiumFilter ||
+    graduationYearFilter ||
     entryPeriodFilter ||
     batchFilter ||
     fileStatusFilter ||
@@ -214,6 +313,77 @@ export default function AdminConsolePage() {
     }
     return "-";
   };
+
+  // Memoized Filter Options untuk Dropdown Custom Bebas Tajam
+  const cohortOptions = useMemo(
+    () => [
+      { value: "", label: "Semua Angkatan" },
+      ...(stats?.cohorts?.map((c) => ({
+        value: c,
+        label: `Angkatan ${c}${stats?.cohortCounts?.[c] ? ` (${stats.cohortCounts[c]})` : ""}`,
+      })) || []),
+    ],
+    [stats?.cohorts, stats?.cohortCounts]
+  );
+
+  const yudisiumOptions = useMemo(
+    () => [
+      { value: "", label: "Semua Tanggal Yudisium" },
+      ...(stats?.yudisiumDates?.map((dateStr) => ({
+        value: dateStr,
+        label: formatYudisiumOption(dateStr),
+      })) || []),
+    ],
+    [stats?.yudisiumDates, stats?.yudisiumCounts, stats?.yudisiumSkMap]
+  );
+
+  const graduationYearOptions = useMemo(
+    () => [
+      { value: "", label: "Semua Thn Keluar" },
+      ...(stats?.graduationYears?.map((y) => ({
+        value: y,
+        label: `Tahun ${y}${stats?.graduationYearCounts?.[y] ? ` (${stats.graduationYearCounts[y]})` : ""}`,
+      })) || []),
+    ],
+    [stats?.graduationYears, stats?.graduationYearCounts]
+  );
+
+  const prodiOptions = useMemo(
+    () => [
+      { value: "", label: "Semua Prodi" },
+      { value: "61201", label: "S1 Manajemen" },
+      { value: "61101", label: "S2 Manajemen" },
+    ],
+    []
+  );
+
+  const regTypeOptions = useMemo(
+    () => [
+      { value: "", label: "Semua Jalur" },
+      { value: "PESERTA_DIDIK_BARU", label: "Peserta Didik Baru" },
+      { value: "RPL_PEROLEHAN_SKS", label: "RPL Perolehan SKS" },
+      { value: "RPL_TRANSFER_SKS", label: "RPL Transfer SKS" },
+    ],
+    []
+  );
+
+  const sortOptions = useMemo(
+    () => [
+      { value: "nim-asc", label: "Urut: NIM (Terkecil)" },
+      { value: "nim-desc", label: "Urut: NIM (Terbesar)" },
+      { value: "name-asc", label: "Urut: Nama (A → Z)" },
+      { value: "name-desc", label: "Urut: Nama (Z → A)" },
+      { value: "yudisiumDate-desc", label: "Urut: Yudisium (Terbaru)" },
+      { value: "yudisiumDate-asc", label: "Urut: Yudisium (Terlama)" },
+      { value: "graduationYear-desc", label: "Urut: Thn Keluar (Terbaru)" },
+      { value: "graduationYear-asc", label: "Urut: Thn Keluar (Terlama)" },
+      { value: "gpa-desc", label: "Urut: IPK (Tertinggi)" },
+      { value: "gpa-asc", label: "Urut: IPK (Terendah)" },
+      { value: "entryPeriod-desc", label: "Urut: Masuk (Terbaru)" },
+      { value: "pisnNumber-desc", label: "Urut: PISN Dahulu" },
+    ],
+    []
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -314,6 +484,7 @@ export default function AdminConsolePage() {
       if (pisnFilter) params.set("hasPisn", pisnFilter);
       if (cohortFilter) params.set("cohort", cohortFilter);
       if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
+      if (graduationYearFilter) params.set("year", graduationYearFilter);
       if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
       if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
       if (gpaRangeFilter) params.set("gpaRange", gpaRangeFilter);
@@ -352,6 +523,7 @@ export default function AdminConsolePage() {
     pisnFilter,
     cohortFilter,
     yudisiumFilter,
+    graduationYearFilter,
     entryPeriodFilter,
     fileStatusFilter,
     gpaRangeFilter,
@@ -372,6 +544,7 @@ export default function AdminConsolePage() {
     pisnFilter,
     cohortFilter,
     yudisiumFilter,
+    graduationYearFilter,
     entryPeriodFilter,
     fileStatusFilter,
     gpaRangeFilter,
@@ -480,6 +653,7 @@ export default function AdminConsolePage() {
       if (pisnFilter) params.set("hasPisn", pisnFilter);
       if (cohortFilter) params.set("cohort", cohortFilter);
       if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
+      if (graduationYearFilter) params.set("year", graduationYearFilter);
       if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
       if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
       if (gpaRangeFilter) params.set("gpaRange", gpaRangeFilter);
@@ -910,42 +1084,24 @@ export default function AdminConsolePage() {
           {/* Kelompok Filter Utama */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* 1. Filter Angkatan */}
-            <select
+            <FilterDropdown
               value={cohortFilter}
-              onChange={(e) => setCohortFilter(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
-                cohortFilter
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
-                  : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+              onChange={setCohortFilter}
+              options={cohortOptions}
+              placeholder="Semua Angkatan"
+              panelWidth="min-w-[190px]"
               title="Saring berdasarkan tahun angkatan masuk"
-            >
-              <option value="">Semua Angkatan</option>
-              {stats?.cohorts?.map((c) => (
-                <option key={c} value={c}>
-                  Angkatan {c} {stats?.cohortCounts?.[c] ? `(${stats.cohortCounts[c]})` : ""}
-                </option>
-              ))}
-            </select>
+            />
 
             {/* 2. Filter Tanggal Yudisium & SK */}
-            <select
+            <FilterDropdown
               value={yudisiumFilter}
-              onChange={(e) => setYudisiumFilter(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
-                yudisiumFilter
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
-                  : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+              onChange={setYudisiumFilter}
+              options={yudisiumOptions}
+              placeholder="Semua Tanggal Yudisium"
+              panelWidth="min-w-[240px]"
               title="Saring berdasarkan tanggal yudisium & SK kelulusan"
-            >
-              <option value="">Semua Tanggal Yudisium</option>
-              {stats?.yudisiumDates?.map((dateStr) => (
-                <option key={dateStr} value={dateStr}>
-                  {formatYudisiumOption(dateStr)}
-                </option>
-              ))}
-            </select>
+            />
 
             {/* 3. Status PISN Quick Toggle with Badges */}
             <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
@@ -995,37 +1151,34 @@ export default function AdminConsolePage() {
             </div>
 
             {/* 4. Filter Program Studi */}
-            <select
+            <FilterDropdown
               value={prodiFilter}
-              onChange={(e) => setProdiFilter(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
-                prodiFilter
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
-                  : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+              onChange={setProdiFilter}
+              options={prodiOptions}
+              placeholder="Semua Prodi"
+              panelWidth="min-w-[160px]"
               title="Saring berdasarkan program studi"
-            >
-              <option value="">Semua Prodi</option>
-              <option value="61201">S1 Manajemen</option>
-              <option value="61101">S2 Manajemen</option>
-            </select>
+            />
 
             {/* 5. Filter Jalur Masuk */}
-            <select
+            <FilterDropdown
               value={regTypeFilter}
-              onChange={(e) => setRegTypeFilter(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
-                regTypeFilter
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
-                  : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+              onChange={setRegTypeFilter}
+              options={regTypeOptions}
+              placeholder="Semua Jalur"
+              panelWidth="min-w-[180px]"
               title="Saring berdasarkan jalur pendaftaran"
-            >
-              <option value="">Semua Jalur</option>
-              <option value="PESERTA_DIDIK_BARU">Peserta Didik Baru</option>
-              <option value="RPL_PEROLEHAN_SKS">RPL Perolehan SKS</option>
-              <option value="RPL_TRANSFER_SKS">RPL Transfer SKS</option>
-            </select>
+            />
+
+            {/* 6. Filter Tahun Keluar Kalender */}
+            <FilterDropdown
+              value={graduationYearFilter}
+              onChange={setGraduationYearFilter}
+              options={graduationYearOptions}
+              placeholder="Semua Thn Keluar"
+              panelWidth="min-w-[170px]"
+              title="Saring berdasarkan tahun kalender kelulusan (contoh: 2026)"
+            />
           </div>
 
           {/* Kelompok Kanan: Filter Tambahan, Urutkan, & Reset */}
@@ -1163,32 +1316,24 @@ export default function AdminConsolePage() {
               )}
             </div>
 
-            {/* Compact Sort Dropdown */}
-            <select
+            {/* Compact Sort Dropdown (Custom Rounded Bebas Sudut Tajam) */}
+            <FilterDropdown
               value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [f, o] = e.target.value.split("-");
+              onChange={(val) => {
+                const [f, o] = val.split("-");
                 setSortBy(f);
                 setSortOrder(o as "asc" | "desc");
               }}
-              className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
-            >
-              <option value="nim-asc">Urutkan: NIM (Terkecil)</option>
-              <option value="nim-desc">Urutkan: NIM (Terbesar)</option>
-              <option value="name-asc">Urutkan: Nama (A → Z)</option>
-              <option value="name-desc">Urutkan: Nama (Z → A)</option>
-              <option value="yudisiumDate-desc">Urutkan: Yudisium (Terbaru)</option>
-              <option value="yudisiumDate-asc">Urutkan: Yudisium (Terlama)</option>
-              <option value="graduationYear-desc">Urutkan: Thn Keluar (Terbaru)</option>
-              <option value="graduationYear-asc">Urutkan: Thn Keluar (Terlama)</option>
-              <option value="gpa-desc">Urutkan: IPK (Tertinggi)</option>
-              <option value="gpa-asc">Urutkan: IPK (Terendah)</option>
-              <option value="entryPeriod-desc">Urutkan: Masuk (Terbaru)</option>
-              <option value="pisnNumber-desc">Urutkan: PISN Dahulu</option>
-            </select>
+              options={sortOptions}
+              placeholder="Urutkan"
+              align="right"
+              panelWidth="min-w-[210px]"
+              title="Urutkan daftar lulusan"
+              isActive={sortBy !== "nim" || sortOrder !== "asc"}
+            />
 
             {/* Reset All Filters Button */}
-            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || cohortFilter || yudisiumFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
+            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || cohortFilter || yudisiumFilter || graduationYearFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
               <button
                 type="button"
                 onClick={() => {
@@ -1198,6 +1343,7 @@ export default function AdminConsolePage() {
                   setPisnFilter("");
                   setCohortFilter("");
                   setYudisiumFilter("");
+                  setGraduationYearFilter("");
                   setEntryPeriodFilter("");
                   setBatchFilter("");
                   setFileStatusFilter("");
