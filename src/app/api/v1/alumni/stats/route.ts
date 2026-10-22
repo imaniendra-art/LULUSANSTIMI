@@ -16,6 +16,7 @@ export async function GET() {
       batchAggregations,
       yudisiumAggregations,
       entryPeriodAggregations,
+      allMetadata,
     ] = await Promise.all([
       prisma.alumni.count(),
       prisma.alumni.count({
@@ -79,6 +80,14 @@ export async function GET() {
         distinct: ["entryPeriod"],
         orderBy: { entryPeriod: "asc" },
       }),
+      prisma.alumni.findMany({
+        select: {
+          yudisiumDate: true,
+          entryPeriod: true,
+          cohortYear: true,
+          yudisiumDecreeNumber: true,
+        },
+      }),
     ]);
 
     const batches = batchAggregations
@@ -93,6 +102,35 @@ export async function GET() {
       .map((e) => e.entryPeriod)
       .filter((p): p is string => !!p);
 
+    const allRecords = allMetadata || [];
+    const yudisiumCounts: Record<string, number> = {};
+    const yudisiumSkMap: Record<string, string> = {};
+    const cohortCounts: Record<string, number> = {};
+
+    for (const r of allRecords) {
+      if (r.yudisiumDate) {
+        const dStr = r.yudisiumDate.toISOString().split("T")[0];
+        yudisiumCounts[dStr] = (yudisiumCounts[dStr] || 0) + 1;
+        if (r.yudisiumDecreeNumber && !yudisiumSkMap[dStr]) {
+          yudisiumSkMap[dStr] = r.yudisiumDecreeNumber;
+        }
+      }
+
+      let cYear: string | null = null;
+      if (r.cohortYear && r.cohortYear >= 2000 && r.cohortYear <= 2030) {
+        cYear = r.cohortYear.toString();
+      } else if (r.entryPeriod && r.entryPeriod.length >= 4) {
+        const y = r.entryPeriod.substring(0, 4);
+        if (/^20\d\d$/.test(y)) cYear = y;
+      }
+
+      if (cYear) {
+        cohortCounts[cYear] = (cohortCounts[cYear] || 0) + 1;
+      }
+    }
+
+    const cohorts = Object.keys(cohortCounts).sort();
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -104,6 +142,10 @@ export async function GET() {
         bothFilesArchived: Math.min(withIjazah, withTranskrip),
         batches,
         yudisiumDates,
+        yudisiumCounts,
+        yudisiumSkMap,
+        cohorts,
+        cohortCounts,
         entryPeriods,
         prodi: {
           s1Manajemen: s1ManajemenCount,

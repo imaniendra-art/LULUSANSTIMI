@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const hasPisn = searchParams.get("hasPisn");
     const yudisiumDateParam = searchParams.get("yudisiumDate") || "";
     const entryPeriodParam = searchParams.get("entryPeriod") || "";
+    const cohortParam = searchParams.get("cohort") || searchParams.get("angkatan") || "";
     const fileStatusParam = searchParams.get("fileStatus") || "";
     const gpaRangeParam = searchParams.get("gpaRange") || "";
     const sortBy = searchParams.get("sortBy") || "nim";
@@ -53,10 +54,34 @@ export async function GET(request: NextRequest) {
     if (year) where.graduationYear = parseInt(year, 10);
     if (entryPeriodParam) where.entryPeriod = entryPeriodParam;
 
+    if (cohortParam) {
+      const cohortYear = parseInt(cohortParam, 10);
+      const condition = {
+        OR: [
+          ...(isNaN(cohortYear) ? [] : [{ cohortYear }]),
+          { entryPeriod: { startsWith: cohortParam } },
+        ],
+      };
+      if (Array.isArray(where.AND)) {
+        where.AND.push(condition);
+      } else if (where.AND) {
+        where.AND = [where.AND, condition];
+      } else {
+        where.AND = [condition];
+      }
+    }
+
     if (yudisiumDateParam) {
       const start = new Date(`${yudisiumDateParam}T00:00:00.000Z`);
       const end = new Date(`${yudisiumDateParam}T23:59:59.999Z`);
-      where.yudisiumDate = { gte: start, lte: end };
+      const condition = { yudisiumDate: { gte: start, lte: end } };
+      if (Array.isArray(where.AND)) {
+        where.AND.push(condition);
+      } else if (where.AND) {
+        where.AND = [where.AND, condition];
+      } else {
+        where.AND = [condition];
+      }
     }
 
     if (fileStatusParam === "has_both") {

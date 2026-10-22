@@ -87,6 +87,10 @@ interface StatsData {
   bothFilesArchived: number;
   batches: string[];
   yudisiumDates?: string[];
+  yudisiumCounts?: Record<string, number>;
+  yudisiumSkMap?: Record<string, string>;
+  cohorts?: string[];
+  cohortCounts?: Record<string, number>;
   entryPeriods?: string[];
   prodi: {
     s1Manajemen: number;
@@ -115,6 +119,7 @@ export default function AdminConsolePage() {
   const [regTypeFilter, setRegTypeFilter] = useState("");
   const [batchFilter, setBatchFilter] = useState("");
   const [pisnFilter, setPisnFilter] = useState("");
+  const [cohortFilter, setCohortFilter] = useState("");
   const [yudisiumFilter, setYudisiumFilter] = useState("");
   const [entryPeriodFilter, setEntryPeriodFilter] = useState("");
   const [fileStatusFilter, setFileStatusFilter] = useState("");
@@ -138,12 +143,25 @@ export default function AdminConsolePage() {
   const [totalPages, setTotalPages] = useState<number>(1);
 
   const activeAdvancedFiltersCount = [
-    yudisiumFilter,
     entryPeriodFilter,
     batchFilter,
     fileStatusFilter,
     gpaRangeFilter,
   ].filter(Boolean).length;
+
+  // Format Yudisium Date for Dropdowns & Badges
+  const formatYudisiumOption = (dateStr: string) => {
+    const parts = dateStr.split("-");
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+    const d = parseInt(parts[2], 10);
+    const m = months[parseInt(parts[1], 10) - 1];
+    const y = parts[0];
+    const sk = stats?.yudisiumSkMap?.[dateStr];
+    const count = stats?.yudisiumCounts?.[dateStr];
+    const skShort = sk ? `(SK ${sk.split("/")[1] || sk})` : "";
+    const countStr = count ? `· ${count} mhs` : "";
+    return `${d} ${m} ${y} ${skShort} ${countStr}`.trim();
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -242,6 +260,7 @@ export default function AdminConsolePage() {
       if (regTypeFilter) params.set("registrationType", regTypeFilter);
       if (batchFilter) params.set("batch", batchFilter);
       if (pisnFilter) params.set("hasPisn", pisnFilter);
+      if (cohortFilter) params.set("cohort", cohortFilter);
       if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
       if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
       if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
@@ -279,6 +298,7 @@ export default function AdminConsolePage() {
     regTypeFilter,
     batchFilter,
     pisnFilter,
+    cohortFilter,
     yudisiumFilter,
     entryPeriodFilter,
     fileStatusFilter,
@@ -298,6 +318,7 @@ export default function AdminConsolePage() {
     regTypeFilter,
     batchFilter,
     pisnFilter,
+    cohortFilter,
     yudisiumFilter,
     entryPeriodFilter,
     fileStatusFilter,
@@ -401,6 +422,7 @@ export default function AdminConsolePage() {
     if (regTypeFilter) params.set("registrationType", regTypeFilter);
     if (batchFilter) params.set("batch", batchFilter);
     if (pisnFilter) params.set("hasPisn", pisnFilter);
+    if (cohortFilter) params.set("cohort", cohortFilter);
     if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
     if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
     if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
@@ -794,10 +816,99 @@ export default function AdminConsolePage() {
           </div>
         </div>
 
-        {/* Row 2: Quick Filter Chips & Advanced Filter Popover */}
+        {/* Row 2: Direct Primary Filter Dropdowns & Controls */}
         <div className="flex items-center justify-between gap-2.5 pt-2.5 border-t border-slate-200 dark:border-white/[0.06] text-xs flex-wrap">
-          {/* Left: Quick Chips */}
+          {/* Left: Direct Filter Dropdowns & Segments */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter Angkatan (Direct Dropdown) */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={cohortFilter}
+                onChange={(e) => setCohortFilter(e.target.value)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
+                  cohortFilter
+                    ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
+                    : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+                title="Saring berdasarkan tahun angkatan masuk"
+              >
+                <option value="">Semua Angkatan</option>
+                {stats?.cohorts?.map((c) => (
+                  <option key={c} value={c}>
+                    Angkatan {c} {stats?.cohortCounts?.[c] ? `(${stats.cohortCounts[c]})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Tanggal Yudisium & SK (Direct Dropdown) */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={yudisiumFilter}
+                onChange={(e) => setYudisiumFilter(e.target.value)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition focus:outline-none ${
+                  yudisiumFilter
+                    ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/40 dark:text-indigo-300 font-bold"
+                    : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                }`}
+                title="Saring berdasarkan tanggal yudisium & SK kelulusan"
+              >
+                <option value="">Semua Tanggal Yudisium</option>
+                {stats?.yudisiumDates?.map((dateStr) => (
+                  <option key={dateStr} value={dateStr}>
+                    {formatYudisiumOption(dateStr)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status PISN Quick Toggle with Badges */}
+            <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setPisnFilter("")}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                  pisnFilter === ""
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Semua PISN ({stats?.totalGraduates || 187})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPisnFilter("false")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                  pisnFilter === "false"
+                    ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                }`}
+                title="Hanya tampilkan mahasiswa yang belum memiliki nomor PISN"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                <span>Belum PISN</span>
+                <span className="text-[10px] px-1 py-0.2 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono font-bold">
+                  {stats?.withoutPisn ?? 100}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPisnFilter("true")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                  pisnFilter === "true"
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                }`}
+                title="Hanya tampilkan mahasiswa yang sudah memiliki nomor PISN resmi"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Sudah PISN</span>
+                <span className="text-[10px] px-1 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                  {stats?.withPisn ?? 87}
+                </span>
+              </button>
+            </div>
+
             {/* Prodi Segmented */}
             <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
               <button
@@ -882,43 +993,6 @@ export default function AdminConsolePage() {
                 RPL Transfer
               </button>
             </div>
-
-            {/* Status PISN Quick Toggle */}
-            <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setPisnFilter("")}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === ""
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Semua PISN
-              </button>
-              <button
-                type="button"
-                onClick={() => setPisnFilter("true")}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === "true"
-                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Sudah PISN
-              </button>
-              <button
-                type="button"
-                onClick={() => setPisnFilter("false")}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === "false"
-                    ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-semibold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Belum PISN
-              </button>
-            </div>
           </div>
 
           {/* Right: Advanced Filter Popover & Sort */}
@@ -935,7 +1009,7 @@ export default function AdminConsolePage() {
                 }`}
               >
                 <Filter className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Filter Lanjutan</span>
+                <span>Filter Lainnya</span>
                 {activeAdvancedFiltersCount > 0 && (
                   <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
                     {activeAdvancedFiltersCount}
@@ -955,13 +1029,12 @@ export default function AdminConsolePage() {
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
                       <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
-                        Filter Lanjutan
+                        Filter Tambahan
                       </span>
                       {activeAdvancedFiltersCount > 0 && (
                         <button
                           type="button"
                           onClick={() => {
-                            setYudisiumFilter("");
                             setEntryPeriodFilter("");
                             setBatchFilter("");
                             setFileStatusFilter("");
@@ -975,34 +1048,10 @@ export default function AdminConsolePage() {
                     </div>
 
                     <div className="space-y-2.5 text-xs">
-                      {/* Tanggal Yudisium */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Tanggal Yudisium
-                        </label>
-                        <select
-                          value={yudisiumFilter}
-                          onChange={(e) => setYudisiumFilter(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">Semua Tanggal Yudisium</option>
-                          {stats?.yudisiumDates?.map((dateStr) => {
-                            const parts = dateStr.split("-");
-                            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-                            const label = `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
-                            return (
-                              <option key={dateStr} value={dateStr}>
-                                {label}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </div>
-
                       {/* Periode Masuk */}
                       <div>
                         <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                          Periode Masuk
+                          Periode Masuk Spesifik
                         </label>
                         <select
                           value={entryPeriodFilter}
@@ -1110,7 +1159,7 @@ export default function AdminConsolePage() {
             </select>
 
             {/* Reset All Filters Button */}
-            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
+            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || cohortFilter || yudisiumFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
               <button
                 type="button"
                 onClick={() => {
@@ -1118,6 +1167,7 @@ export default function AdminConsolePage() {
                   setProdiFilter("");
                   setRegTypeFilter("");
                   setPisnFilter("");
+                  setCohortFilter("");
                   setYudisiumFilter("");
                   setEntryPeriodFilter("");
                   setBatchFilter("");
@@ -1134,6 +1184,168 @@ export default function AdminConsolePage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Row 3: Quick Filter Preset Chips (Pintasan 1-Klik) */}
+        <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-white/[0.04] text-[11px] flex-wrap">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 mr-1 flex items-center gap-1">
+            <SlidersHorizontal className="h-3 w-3" />
+            <span>Pintas:</span>
+          </span>
+
+          {/* Chip 1: Belum PISN */}
+          <button
+            type="button"
+            onClick={() => setPisnFilter(pisnFilter === "false" ? "" : "false")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+              pisnFilter === "false"
+                ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                : "bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
+            }`}
+            title="Saring cepat: Mahasiswa yang belum memiliki PISN"
+          >
+            <span>🔴 Belum PISN</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${pisnFilter === "false" ? "bg-white/20 text-white" : "bg-rose-200/70 dark:bg-rose-500/30 text-rose-800 dark:text-rose-200"}`}>
+              {stats?.withoutPisn ?? 100}
+            </span>
+            {pisnFilter === "false" && <X className="h-3 w-3 ml-0.5" />}
+          </button>
+
+          {/* Chip 2: Sudah PISN */}
+          <button
+            type="button"
+            onClick={() => setPisnFilter(pisnFilter === "true" ? "" : "true")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+              pisnFilter === "true"
+                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                : "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+            }`}
+            title="Saring cepat: Mahasiswa yang sudah memiliki PISN resmi"
+          >
+            <span>🟢 Sudah PISN</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${pisnFilter === "true" ? "bg-white/20 text-white" : "bg-emerald-200/70 dark:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200"}`}>
+              {stats?.withPisn ?? 87}
+            </span>
+            {pisnFilter === "true" && <X className="h-3 w-3 ml-0.5" />}
+          </button>
+
+          {/* Chip 3: Yudisium 26 Sep 2026 */}
+          {stats?.yudisiumDates?.includes("2026-09-26") && (
+            <button
+              type="button"
+              onClick={() => setYudisiumFilter(yudisiumFilter === "2026-09-26" ? "" : "2026-09-26")}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                yudisiumFilter === "2026-09-26"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                  : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30"
+              }`}
+              title="Saring cepat: Yudisium 26 Sep 2026 (SK 512)"
+            >
+              <span>🎓 Yudisium 26 Sep 2026</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${yudisiumFilter === "2026-09-26" ? "bg-white/20 text-white" : "bg-indigo-200/70 dark:bg-indigo-500/30 text-indigo-800 dark:text-indigo-200"}`}>
+                {stats?.yudisiumCounts?.["2026-09-26"] || 60}
+              </span>
+              {yudisiumFilter === "2026-09-26" && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          )}
+
+          {/* Chip 4: Yudisium 4 Sep 2026 */}
+          {stats?.yudisiumDates?.includes("2026-09-04") && (
+            <button
+              type="button"
+              onClick={() => setYudisiumFilter(yudisiumFilter === "2026-09-04" ? "" : "2026-09-04")}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                yudisiumFilter === "2026-09-04"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+              }`}
+              title="Saring cepat: Yudisium 4 Sep 2026 (SK 493)"
+            >
+              <span>Yudisium 4 Sep 2026</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${yudisiumFilter === "2026-09-04" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                {stats?.yudisiumCounts?.["2026-09-04"] || 4}
+              </span>
+              {yudisiumFilter === "2026-09-04" && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          )}
+
+          {/* Chip 5: Yudisium 8 Ags 2026 */}
+          {stats?.yudisiumDates?.includes("2026-08-08") && (
+            <button
+              type="button"
+              onClick={() => setYudisiumFilter(yudisiumFilter === "2026-08-08" ? "" : "2026-08-08")}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                yudisiumFilter === "2026-08-08"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+              }`}
+              title="Saring cepat: Yudisium 8 Ags 2026 (SK 443)"
+            >
+              <span>Yudisium 8 Ags 2026</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${yudisiumFilter === "2026-08-08" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                {stats?.yudisiumCounts?.["2026-08-08"] || 18}
+              </span>
+              {yudisiumFilter === "2026-08-08" && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          )}
+
+          {/* Chip 6: Yudisium 31 Jul 2026 */}
+          {stats?.yudisiumDates?.includes("2026-07-31") && (
+            <button
+              type="button"
+              onClick={() => setYudisiumFilter(yudisiumFilter === "2026-07-31" ? "" : "2026-07-31")}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                yudisiumFilter === "2026-07-31"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+              }`}
+              title="Saring cepat: Yudisium 31 Jul 2026 (SK 342)"
+            >
+              <span>Yudisium 31 Jul 2026</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${yudisiumFilter === "2026-07-31" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                {stats?.yudisiumCounts?.["2026-07-31"] || 24}
+              </span>
+              {yudisiumFilter === "2026-07-31" && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          )}
+
+          {/* Chip 7: Angkatan 2021 */}
+          {stats?.cohorts?.includes("2021") && (
+            <button
+              type="button"
+              onClick={() => setCohortFilter(cohortFilter === "2021" ? "" : "2021")}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                cohortFilter === "2021"
+                  ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                  : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+              }`}
+              title="Saring cepat: Angkatan 2021"
+            >
+              <span>Angkatan 2021</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${cohortFilter === "2021" ? "bg-white/20 text-white" : "bg-amber-200/70 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200"}`}>
+                {stats?.cohortCounts?.["2021"] || 67}
+              </span>
+              {cohortFilter === "2021" && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          )}
+
+          {/* Chip 8: RPL Perolehan SKS */}
+          <button
+            type="button"
+            onClick={() => setRegTypeFilter(regTypeFilter === "RPL_PEROLEHAN_SKS" ? "" : "RPL_PEROLEHAN_SKS")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+              regTypeFilter === "RPL_PEROLEHAN_SKS"
+                ? "bg-sky-600 text-white border-sky-600 shadow-xs"
+                : "bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
+            }`}
+            title="Saring cepat: Jalur RPL Perolehan SKS"
+          >
+            <span>RPL Perolehan SKS</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${regTypeFilter === "RPL_PEROLEHAN_SKS" ? "bg-white/20 text-white" : "bg-sky-200/70 dark:bg-sky-500/30 text-sky-800 dark:text-sky-200"}`}>
+              {stats?.registrationTypes?.rplPerolehan || 40}
+            </span>
+            {regTypeFilter === "RPL_PEROLEHAN_SKS" && <X className="h-3 w-3 ml-0.5" />}
+          </button>
         </div>
       </div>
 
