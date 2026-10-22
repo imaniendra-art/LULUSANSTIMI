@@ -165,6 +165,21 @@ export default function AdminConsolePage() {
     gpaRangeFilter,
   ].filter(Boolean).length;
 
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+    prodiFilter ||
+    regTypeFilter ||
+    pisnFilter ||
+    cohortFilter ||
+    yudisiumFilter ||
+    entryPeriodFilter ||
+    batchFilter ||
+    fileStatusFilter ||
+    gpaRangeFilter
+  );
+
+  const totalMasterCount = stats?.totalGraduates || 187;
+
   // Format Yudisium Date for Dropdowns & Badges
   const formatYudisiumOption = (dateStr: string) => {
     const parts = dateStr.split("-");
@@ -449,21 +464,27 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Handle Export Excel (.xlsx)
-  const handleExportExcel = () => {
+  // Handle Export Excel (.xlsx) - Smart Contextual Export
+  const handleExportExcel = (scope: "filtered" | "all" = "filtered") => {
     setIsExporting(true);
     const params = new URLSearchParams();
     params.set("tab", activeTableTab);
-    if (searchQuery) params.set("q", searchQuery);
-    if (prodiFilter) params.set("prodi", prodiFilter);
-    if (regTypeFilter) params.set("registrationType", regTypeFilter);
-    if (batchFilter) params.set("batch", batchFilter);
-    if (pisnFilter) params.set("hasPisn", pisnFilter);
-    if (cohortFilter) params.set("cohort", cohortFilter);
-    if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
-    if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
-    if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
-    if (gpaRangeFilter) params.set("gpaRange", gpaRangeFilter);
+    
+    if (scope === "all") {
+      params.set("scope", "all");
+    } else {
+      if (searchQuery) params.set("q", searchQuery);
+      if (prodiFilter) params.set("prodi", prodiFilter);
+      if (regTypeFilter) params.set("registrationType", regTypeFilter);
+      if (batchFilter) params.set("batch", batchFilter);
+      if (pisnFilter) params.set("hasPisn", pisnFilter);
+      if (cohortFilter) params.set("cohort", cohortFilter);
+      if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
+      if (entryPeriodFilter) params.set("entryPeriod", entryPeriodFilter);
+      if (fileStatusFilter) params.set("fileStatus", fileStatusFilter);
+      if (gpaRangeFilter) params.set("gpaRange", gpaRangeFilter);
+    }
+
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
 
@@ -827,20 +848,51 @@ export default function AdminConsolePage() {
               <span>Impor Belmawa</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={isExporting || graduates.length === 0}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer disabled:opacity-50"
-              title="Unduh data tabel ke format Microsoft Excel (.xlsx)"
-            >
-              {isExporting ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="h-4 w-4" />
-              )}
-              <span>Ekspor Excel ({graduates.length})</span>
-            </button>
+            {/* Smart Contextual Export Button */}
+            {hasActiveFilters ? (
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+                <button
+                  type="button"
+                  onClick={() => handleExportExcel("filtered")}
+                  disabled={isExporting || totalRecords === 0}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer disabled:opacity-50"
+                  title={`Unduh hasil filter (${totalRecords} data) ke Excel`}
+                >
+                  {isExporting ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="h-4 w-4" />
+                  )}
+                  <span>Ekspor Filter ({totalRecords})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportExcel("all")}
+                  disabled={isExporting || totalMasterCount === 0}
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 font-semibold text-xs transition cursor-pointer disabled:opacity-50"
+                  title={`Unduh seluruh master database (${totalMasterCount} data) tanpa filter`}
+                >
+                  <Database className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Semua ({totalMasterCount})</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleExportExcel("all")}
+                disabled={isExporting || totalMasterCount === 0}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer disabled:opacity-50"
+                title={`Unduh seluruh master data (${totalMasterCount} mahasiswa) ke format Excel`}
+              >
+                {isExporting ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4" />
+                )}
+                <span>Ekspor Excel (Semua {totalMasterCount} Data)</span>
+              </button>
+            )}
 
             <button
               type="button"

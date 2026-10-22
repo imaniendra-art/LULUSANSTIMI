@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const tab = searchParams.get("tab") || "pisn";
+    const scope = searchParams.get("scope") || "filtered";
     const query = searchParams.get("q") || "";
     const prodi = searchParams.get("prodi") || "";
     const year = searchParams.get("year");
@@ -52,6 +53,9 @@ export async function GET(request: NextRequest) {
     const sortOrder = (searchParams.get("sortOrder") || "asc").toLowerCase() === "desc" ? "desc" : "asc";
 
     const where: Record<string, unknown> = {};
+
+    // Jika scope !== "all", terapkan filter aktif
+    if (scope !== "all") {
 
     if (query) {
       where.OR = [
@@ -157,6 +161,7 @@ export async function GET(request: NextRequest) {
         where.AND = [condition];
       }
     }
+  }
 
     let orderBy: Record<string, "asc" | "desc">[] = [{ nim: "asc" }];
     if (sortBy === "name" || sortBy === "fullName") {
@@ -186,8 +191,22 @@ export async function GET(request: NextRequest) {
       orderBy,
     });
 
-    const now = new Date();
-    const dateStamp = now.toISOString().split("T")[0].replace(/-/g, "");
+    const isAll = scope === "all" || Object.keys(where).length === 0;
+
+    let filterTag = "";
+    if (!isAll) {
+      if (hasPisn === "false") filterTag = "BELUM PISN";
+      else if (hasPisn === "true") filterTag = "SUDAH PISN";
+      else if (yudisiumDateParam) filterTag = `YUDISIUM ${yudisiumDateParam}`;
+      else if (cohortParam) filterTag = `ANGKATAN ${cohortParam}`;
+      else if (prodi === "61201") filterTag = "S1 MANAJEMEN";
+      else if (prodi === "61101") filterTag = "S2 MANAJEMEN";
+      else if (registrationType === "RPL_PEROLEHAN_SKS") filterTag = "RPL PEROLEHAN";
+      else if (registrationType === "RPL_TRANSFER_SKS") filterTag = "RPL TRANSFER";
+      else if (registrationType === "PESERTA_DIDIK_BARU") filterTag = "PESERTA BARU";
+      else if (query) filterTag = `CARI ${query.slice(0, 15).replace(/[^\w\s-]/g, "")}`.trim();
+      else filterTag = "TERFILTER";
+    }
 
     if (tab === "skripsi") {
       // Sheet Judul Skripsi & Tesis
@@ -226,7 +245,9 @@ export async function GET(request: NextRequest) {
         { wch: 25 }, // NO PISN
       ];
 
-      const filename = "ARSIP JUDUL SKRIPSI LULUSAN STIMI.xlsx";
+      const filename = isAll
+        ? `ARSIP JUDUL SKRIPSI LULUSAN STIMI - SEMUA (${items.length} ALUMNI).xlsx`
+        : `ARSIP JUDUL SKRIPSI - ${filterTag} (${items.length} ALUMNI).xlsx`;
       const encodedFilename = encodeURIComponent(filename);
 
       XLSX.utils.book_append_sheet(wb, ws, "ARSIP SKRIPSI STIMI");
@@ -292,7 +313,9 @@ export async function GET(request: NextRequest) {
       { wch: 45 }, // JUDUL SKRIPSI
     ];
 
-    const filename = "ARSIP IJAZA LULUSAN STIMI.xlsx";
+    const filename = isAll
+      ? `ARSIP IJAZA LULUSAN STIMI - SEMUA (${items.length} ALUMNI).xlsx`
+      : `ARSIP IJAZA - ${filterTag} (${items.length} ALUMNI).xlsx`;
     const encodedFilename = encodeURIComponent(filename);
 
     XLSX.utils.book_append_sheet(wb, ws, "ARSIP IJAZA LULUSAN STIMI");
