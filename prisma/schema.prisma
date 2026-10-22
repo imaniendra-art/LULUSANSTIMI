@@ -1,0 +1,238 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN_BAAK
+  PENGURUS_IKA
+  ALUMNI
+}
+
+enum UserStatus {
+  PENDING_ACTIVATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum GenderType {
+  MALE
+  FEMALE
+}
+
+enum RegistrationType {
+  PESERTA_DIDIK_BARU
+  KONVERSI_TRANSFER_NILAI
+  RPL_TRANSFER_SKS
+  RPL_PEROLEHAN_SKS
+  RPL_KONVERSI_SKS
+}
+
+enum GraduationSource {
+  WISUDA_PANDAWA
+  YUDISIUM_NON_WISUDA
+}
+
+enum LegalizationDeliveryType {
+  DIGITAL_PDF
+  HARDCOPY_PICKUP
+  HARDCOPY_COURIER
+}
+
+enum LegalizationStatus {
+  SUBMITTED
+  IN_REVIEW
+  APPROVED_STAMPED
+  REJECTED
+  READY_FOR_PICKUP
+  COMPLETED
+}
+
+enum JobStatusType {
+  EMPLOYED_FULL_TIME
+  EMPLOYED_PART_TIME
+  ENTREPRENEUR
+  CONTINUING_STUDY
+  SEEKING_EMPLOYMENT
+  NOT_SEEKING_EMPLOYMENT
+}
+
+type StoredLocalFile {
+  fileName      String
+  filePath      String
+  fileSizeBytes Int
+  mimeType      String
+  uploadedAt    DateTime  @default(now())
+}
+
+model Alumni {
+  id                     String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String?           @db.ObjectId
+  user                   User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  nim                    String            @unique
+  nik                    String?
+  fullName               String
+  birthPlace             String?
+  birthDate              DateTime?
+  gender                 GenderType        @default(MALE)
+  phoneNumber            String?
+  personalEmail          String?
+  
+  prodiCode              String            // "61201" (S1 Manajemen), "61101" (S2 Magister Manajemen)
+  prodiName              String            // "S1 Manajemen", "S2 Manajemen"
+  degree                 String            @default("S1") // "S1" atau "S2"
+  
+  registrationType       RegistrationType  @default(PESERTA_DIDIK_BARU) // "Peserta Didik Baru" atau "Konversi Nilai atau Transfer Nilai"
+  entryPeriod            String?           // e.g. "2022/2023 Ganjil" (Opsi A)
+  exitPeriod             String?           // e.g. "2025/2026 Genap" (Opsi A)
+  cohortYear             Int?              // Angkatan masuk
+  graduationYear         Int               // Tahun kelulusan
+  yudisiumDate           DateTime          // Tanggal Yudisium
+  yudisiumDecreeNumber   String?           // Nomor SK Yudisium
+  thesisTitle            String            // Judul Skripsi / Tesis
+  pisnNumber             String?           // No PISN / PIN Dikti (21 Digit)
+  pisnBatchNumber        String?           // No Batch PISN (e.g. "NI-09304661201266")
+  certificateNumber      String?           // No Ijazah Internal
+  gpa                    Float?            // IPK
+
+  graduationSource       GraduationSource  @default(YUDISIUM_NON_WISUDA)
+  graduationCeremonyDate DateTime?
+  pandawaRefId           String?
+
+  ijazahScan             StoredLocalFile?
+  transkripScan          StoredLocalFile?
+
+  currentJobStatus       JobStatusType     @default(SEEKING_EMPLOYMENT)
+  currentCompany         String?
+  currentPosition        String?
+  industrySector         String?
+  linkedinUrl            String?
+  avatarUrl              String?
+  resumeUrl              String?
+  currentAddress         String?
+  city                   String?
+  province               String?
+  
+  isDirectoryPublic      Boolean           @default(true)
+  isVerified             Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  legalizationRequests   LegalizationRequest[]
+  tracerResponses        TracerResponse[]
+
+  @@index([prodiCode, graduationYear])
+  @@index([pisnNumber])
+  @@index([pisnBatchNumber])
+  @@index([registrationType])
+  @@index([currentJobStatus])
+  @@map("alumni")
+}
+
+model User {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  nim          String?     @unique
+  email        String?     @unique
+  passwordHash String?
+  role         UserRole    @default(ALUMNI)
+  status       UserStatus  @default(PENDING_ACTIVATION)
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  alumni       Alumni[]
+
+  @@map("users")
+}
+
+model LegalizationRequest {
+  id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
+  alumniId               String                   @db.ObjectId
+  alumni                 Alumni                   @relation(fields: [alumniId], references: [id], onDelete: Cascade)
+  
+  documentType           String                   // "IJAZAH" atau "TRANSKRIP"
+  purpose                String
+  destinationInstitution String?
+  
+  deliveryType           LegalizationDeliveryType @default(DIGITAL_PDF)
+  courierAddress         String?
+  
+  verificationCode       String                   @unique
+  stampedPdfPath         String?
+  
+  status                 LegalizationStatus       @default(SUBMITTED)
+  reviewedBy             String?
+  rejectionReason        String?
+  requestedAt            DateTime                 @default(now())
+  approvedAt             DateTime?
+
+  @@index([status])
+  @@map("legalization_requests")
+}
+
+model TracerSession {
+  id                    String           @id @default(auto()) @map("_id") @db.ObjectId
+  title                 String
+  academicYear          String
+  targetGraduationYears Int[]
+  startDate             DateTime
+  endDate               DateTime
+  isActive              Boolean          @default(true)
+  description           String?
+  createdAt             DateTime         @default(now())
+
+  responses             TracerResponse[]
+
+  @@map("tracer_sessions")
+}
+
+model TracerResponse {
+  id                      String         @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId               String         @db.ObjectId
+  session                 TracerSession  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  alumniId                String         @db.ObjectId
+  alumni                  Alumni         @relation(fields: [alumniId], references: [id], onDelete: Restrict)
+  nim                     String
+  submissionDate          DateTime       @default(now())
+
+  f1_jobStatus            JobStatusType
+  f2_monthsToFirstJob     Int?
+  f3_firstSalaryRange     String?
+  f4_currentSalaryRange   String?
+  f5_horizontalMatch      Int?
+  f6_verticalMatch        Int?
+  f7_searchChannels       String[]
+  f8_companyScale         String?
+  f11_entrepreneurRevenue Float?
+  f12_competencies        Json?
+  rawSurveyAnswers        Json?
+
+  isValidDikti            Boolean        @default(true)
+  createdAt               DateTime       @default(now())
+
+  @@unique([sessionId, alumniId])
+  @@map("tracer_responses")
+}
+
+model IntegrationLog {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  sourceSystem    GraduationSource
+  eventType       String
+  batchId         String
+  payloadReceived Json?
+  status          String
+  recordsReceived Int              @default(0)
+  recordsInserted Int              @default(0)
+  recordsUpdated  Int              @default(0)
+  recordsFailed   Int              @default(0)
+  errorLog        String?
+  executedAt      DateTime         @default(now())
+
+  @@map("integration_logs")
+}
