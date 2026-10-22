@@ -163,6 +163,27 @@ export default function AdminConsolePage() {
     return `${d} ${m} ${y} ${skShort} ${countStr}`.trim();
   };
 
+  // Menghitung Tahun Keluar kalender (2025/2026 Genap -> 2026, 2026/2027 Ganjil -> 2026)
+  const getTahunKeluar = (alumni: AlumniRecord): number | string => {
+    if (alumni.yudisiumDate) {
+      const d = new Date(alumni.yudisiumDate);
+      const y = d.getFullYear();
+      if (!isNaN(y) && y > 2000) return y;
+    }
+    if (alumni.graduationYear) {
+      return alumni.graduationYear;
+    }
+    if (alumni.exitPeriod) {
+      const match = alumni.exitPeriod.match(/^(\d{4})[-/]?([12])/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const sem = match[2];
+        return sem === "2" ? year + 1 : year;
+      }
+    }
+    return "-";
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const tab = new URLSearchParams(window.location.search).get("tab");
@@ -1400,13 +1421,15 @@ export default function AdminConsolePage() {
           /* TABEL KHUSUS JUDUL SKRIPSI & TESIS */
           <table className="w-full table-fixed text-left text-slate-700 dark:text-slate-300">
             <colgroup>
-              <col className="w-[4%]" />  {/* 0. No */}
-              <col className="w-[18%]" /> {/* 1. Mahasiswa */}
-              <col className="w-[10%]" /> {/* 2. Prodi */}
-              <col className="w-[40%]" /> {/* 3. Judul Skripsi */}
-              <col className="w-[10%]" /> {/* 4. Yudisium */}
-              <col className="w-[11%]" /> {/* 5. No SK */}
-              <col className="w-[7%]" />  {/* 6. Aksi */}
+              <col className="w-[3.5%]" />  {/* 0. No */}
+              <col className="w-[17%]" />   {/* 1. Mahasiswa */}
+              <col className="w-[9%]" />    {/* 2. Prodi */}
+              <col className="w-[31.5%]" /> {/* 3. Judul Skripsi */}
+              <col className="w-[7%]" />    {/* 4. Masuk */}
+              <col className="w-[7.5%]" />  {/* 5. Periode Keluar */}
+              <col className="w-[7.5%]" />  {/* 6. Tahun Keluar */}
+              <col className="w-[12%]" />   {/* 7. Yudisium & SK */}
+              <col className="w-[5%]" />    {/* 8. Aksi */}
             </colgroup>
 
             <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
@@ -1416,7 +1439,7 @@ export default function AdminConsolePage() {
                   <button
                     type="button"
                     onClick={() => handleSort("name")}
-                    className={`flex items-center gap-1 group transition ${
+                    className={`flex items-center gap-1 group transition cursor-pointer ${
                       sortBy === "name" || sortBy === "nim" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                     }`}
                     title="Klik untuk mengurutkan Nama Mahasiswa"
@@ -1429,7 +1452,7 @@ export default function AdminConsolePage() {
                   <button
                     type="button"
                     onClick={() => handleSort("prodi")}
-                    className={`flex items-center gap-1 group transition ${
+                    className={`flex items-center gap-1 group transition cursor-pointer ${
                       sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
@@ -1440,19 +1463,57 @@ export default function AdminConsolePage() {
                 <th className="py-3 px-3 font-semibold text-indigo-600 dark:text-indigo-400">
                   Judul Skripsi / Karya Ilmiah Mahasiswa
                 </th>
+                <th className="py-3 px-2 font-semibold text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSort("entryPeriod")}
+                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                      sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Periode Masuk Mahasiswa"
+                  >
+                    <span>Masuk</span>
+                    {renderSortIcon("entryPeriod")}
+                  </button>
+                </th>
+                <th className="py-3 px-2 font-semibold text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSort("exitPeriod")}
+                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                      sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Periode Keluar / Lulus"
+                  >
+                    <span>P. Keluar</span>
+                    {renderSortIcon("exitPeriod")}
+                  </button>
+                </th>
+                <th className="py-3 px-2 font-semibold text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSort("graduationYear")}
+                    className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                      sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Tahun Keluar Kalender"
+                  >
+                    <span>Thn Keluar</span>
+                    {renderSortIcon("graduationYear")}
+                  </button>
+                </th>
                 <th className="py-3 px-2 font-semibold">
                   <button
                     type="button"
                     onClick={() => handleSort("yudisiumDate")}
-                    className={`flex items-center gap-1 group transition ${
+                    className={`flex items-center gap-1 group transition cursor-pointer ${
                       sortBy === "yudisiumDate" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <span>Yudisium</span>
+                    <span>Yudisium & SK</span>
                     {renderSortIcon("yudisiumDate")}
                   </button>
                 </th>
-                <th className="py-3 px-2 font-semibold">No SK Yudisium</th>
                 <th className="py-3 px-2 font-semibold text-right">Aksi</th>
               </tr>
             </thead>
@@ -1460,14 +1521,14 @@ export default function AdminConsolePage() {
             <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
               {isLoading && graduates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
                     <p className="text-xs">Memuat repositori judul skripsi...</p>
                   </td>
                 </tr>
               ) : graduates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
                     <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci atau filter di atas.</p>
@@ -1519,7 +1580,7 @@ export default function AdminConsolePage() {
                         {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
                       </span>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
-                        {alumni.entryPeriod || "-"} → {alumni.exitPeriod || "-"}
+                        {alumni.degree || "S1"}
                       </span>
                     </td>
 
@@ -1583,25 +1644,41 @@ export default function AdminConsolePage() {
                       )}
                     </td>
 
-                    {/* 4. Tanggal Yudisium */}
-                    <td
-                      className="py-3 px-2 font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate"
-                      title={alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : ""}
-                    >
-                      {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-                    </td>
-
-                    {/* 5. Nomor SK */}
-                    <td className="py-3 px-2">
-                      <span
-                        className="font-mono text-[10px] text-slate-800 dark:text-slate-200 truncate block"
-                        title={alumni.yudisiumDecreeNumber || ""}
-                      >
-                        {alumni.yudisiumDecreeNumber || "-"}
+                    {/* 4. Periode Masuk */}
+                    <td className="py-3 px-2 text-center">
+                      <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                        {alumni.entryPeriod || "-"}
                       </span>
                     </td>
 
-                    {/* 6. Aksi */}
+                    {/* 5. Periode Keluar */}
+                    <td className="py-3 px-2 text-center">
+                      <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                        {alumni.exitPeriod || "-"}
+                      </span>
+                    </td>
+
+                    {/* 6. Tahun Keluar (Angka Tahun Kalender) */}
+                    <td className="py-3 px-2 text-center">
+                      <span className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                        {getTahunKeluar(alumni)}
+                      </span>
+                    </td>
+
+                    {/* 7. Tanggal Yudisium & SK */}
+                    <td className="py-3 px-2">
+                      <p className="font-mono text-[11px] font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                      </p>
+                      <p
+                        className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5"
+                        title={alumni.yudisiumDecreeNumber || ""}
+                      >
+                        {alumni.yudisiumDecreeNumber || "-"}
+                      </p>
+                    </td>
+
+                    {/* 8. Aksi */}
                     <td className="py-3 px-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -1627,17 +1704,19 @@ export default function AdminConsolePage() {
             </tbody>
           </table>
         ) : (
-          /* TABEL REPOSITORI PISN & STATUS IJAZAH (8 KOLOM DENGAN NOMOR URUT) */
+          /* TABEL REPOSITORI PISN & STATUS IJAZAH (10 KOLOM DENGAN NOMOR URUT) */
         <table className="w-full table-fixed text-left text-slate-700 dark:text-slate-300">
           <colgroup>
-            <col className="w-[4%]" />  {/* 0. No */}
-            <col className="w-[21%]" /> {/* 1. Mahasiswa */}
-            <col className="w-[14%]" /> {/* 2. Prodi & Jalur */}
-            <col className="w-[12%]" /> {/* 3. Masa Studi */}
-            <col className="w-[19%]" /> {/* 4. Kelulusan & SK */}
-            <col className="w-[17%]" /> {/* 5. PISN & Batch */}
-            <col className="w-[6%]" />  {/* 6. Berkas */}
-            <col className="w-[7%]" />  {/* 7. Aksi */}
+            <col className="w-[3.5%]" /> {/* 0. No */}
+            <col className="w-[18%]" />   {/* 1. Mahasiswa */}
+            <col className="w-[12%]" />   {/* 2. Prodi & Jalur */}
+            <col className="w-[6.5%]" />  {/* 3. Masuk */}
+            <col className="w-[7%]" />    {/* 4. Periode Keluar */}
+            <col className="w-[7.5%]" />  {/* 5. Tahun Keluar */}
+            <col className="w-[16%]" />   {/* 6. Kelulusan & SK */}
+            <col className="w-[17%]" />   {/* 7. PISN & Batch */}
+            <col className="w-[6%]" />    {/* 8. Berkas */}
+            <col className="w-[6.5%]" />  {/* 9. Aksi */}
           </colgroup>
 
           <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
@@ -1676,10 +1755,36 @@ export default function AdminConsolePage() {
                   className={`inline-flex items-center gap-1 group transition cursor-pointer ${
                     sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                   }`}
-                  title="Klik untuk mengurutkan Periode Masuk"
+                  title="Periode Masuk Mahasiswa"
                 >
-                  <span>Masa Studi</span>
+                  <span>Masuk</span>
                   {renderSortIcon("entryPeriod")}
+                </button>
+              </th>
+              <th className="py-3 px-2 font-semibold text-center">
+                <button
+                  type="button"
+                  onClick={() => handleSort("exitPeriod")}
+                  className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                    sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                  title="Periode Keluar / Lulus"
+                >
+                  <span>P. Keluar</span>
+                  {renderSortIcon("exitPeriod")}
+                </button>
+              </th>
+              <th className="py-3 px-2 font-semibold text-center">
+                <button
+                  type="button"
+                  onClick={() => handleSort("graduationYear")}
+                  className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                    sortBy === "graduationYear" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                  title="Tahun Keluar Kalender"
+                >
+                  <span>Thn Keluar</span>
+                  {renderSortIcon("graduationYear")}
                 </button>
               </th>
               <th className="py-3 px-2 font-semibold">
@@ -1716,14 +1821,14 @@ export default function AdminConsolePage() {
           <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
             {isLoading && graduates.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
                   <p className="text-xs">Memuat data lulusan dari MongoDB...</p>
                 </td>
               </tr>
             ) : graduates.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
                   <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
                   <p className="text-xs text-slate-500 mt-1">
@@ -1793,17 +1898,28 @@ export default function AdminConsolePage() {
                     </div>
                   </td>
 
-                  {/* 3. Masa Studi (Masuk → Keluar) */}
+                  {/* 3. Periode Masuk */}
                   <td className="py-2.5 px-2 text-center">
-                    <div className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/5">
-                      <span>{alumni.entryPeriod || "-"}</span>
-                      <span className="text-slate-400">→</span>
-                      <span>{alumni.exitPeriod || "-"}</span>
-                    </div>
-                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Masuk → Lulus</p>
+                    <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                      {alumni.entryPeriod || "-"}
+                    </span>
                   </td>
 
-                  {/* 4. Kelulusan & SK Yudisium */}
+                  {/* 4. Periode Keluar */}
+                  <td className="py-2.5 px-2 text-center">
+                    <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5">
+                      {alumni.exitPeriod || "-"}
+                    </span>
+                  </td>
+
+                  {/* 5. Tahun Keluar */}
+                  <td className="py-2.5 px-2 text-center">
+                    <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                      {getTahunKeluar(alumni)}
+                    </span>
+                  </td>
+
+                  {/* 6. Kelulusan & SK Yudisium */}
                   <td className="py-2.5 px-2">
                     <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100">
                       {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}

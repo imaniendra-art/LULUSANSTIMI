@@ -15,6 +15,24 @@ function formatIndoDate(d?: Date | null): string {
   }
 }
 
+function getTahunKeluar(a: { yudisiumDate?: Date | null; graduationYear?: number | null; exitPeriod?: string | null }): number | string {
+  if (a.yudisiumDate) {
+    const d = new Date(a.yudisiumDate);
+    const y = d.getFullYear();
+    if (!isNaN(y) && y > 2000) return y;
+  }
+  if (a.graduationYear) return a.graduationYear;
+  if (a.exitPeriod) {
+    const match = a.exitPeriod.match(/^(\d{4})[-/]?([12])/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const sem = match[2];
+      return sem === "2" ? year + 1 : year;
+    }
+  }
+  return "-";
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -153,6 +171,8 @@ export async function GET(request: NextRequest) {
       orderBy = [{ entryPeriod: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "exitPeriod" || sortBy === "exit") {
       orderBy = [{ exitPeriod: sortOrder }, { nim: "asc" }];
+    } else if (sortBy === "graduationYear" || sortBy === "year") {
+      orderBy = [{ graduationYear: sortOrder }, { yudisiumDate: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "batch" || sortBy === "pisnBatchNumber") {
       orderBy = [{ pisnBatchNumber: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "pisn" || sortBy === "pisnNumber") {
@@ -181,6 +201,7 @@ export async function GET(request: NextRequest) {
         "IPK": a.gpa !== null && a.gpa !== undefined ? a.gpa : "-",
         "PERIODE MASUK": a.entryPeriod || "-",
         "PERIODE KELUAR": a.exitPeriod || "-",
+        "TAHUN KELUAR": getTahunKeluar(a),
         "TANGGAL YUDISIUM": formatIndoDate(a.yudisiumDate),
         "NOMOR SK YUDISIUM": a.yudisiumDecreeNumber || "-",
         "NOMOR PISN": a.pisnNumber || "Belum Terbit",
@@ -199,6 +220,7 @@ export async function GET(request: NextRequest) {
         { wch: 8 },  // IPK
         { wch: 15 }, // MASUK
         { wch: 15 }, // KELUAR
+        { wch: 14 }, // TAHUN KELUAR
         { wch: 20 }, // TANGGAL YUDISIUM
         { wch: 35 }, // NO SK
         { wch: 25 }, // NO PISN
@@ -236,6 +258,7 @@ export async function GET(request: NextRequest) {
           : "Peserta Didik Baru",
       "PERIODE MASUK": a.entryPeriod || "-",
       "PERIODE KELUAR": a.exitPeriod || "-",
+      "TAHUN KELUAR": getTahunKeluar(a),
       "TANGGAL YUDISIUM": formatIndoDate(a.yudisiumDate),
       "NOMOR SK YUDISIUM": a.yudisiumDecreeNumber || "-",
       "NOMOR IJAZAH NASIONAL (PISN)": a.pisnNumber || "Belum Terbit",
@@ -258,6 +281,7 @@ export async function GET(request: NextRequest) {
       { wch: 28 }, // JALUR
       { wch: 15 }, // MASUK
       { wch: 15 }, // KELUAR
+      { wch: 14 }, // TAHUN KELUAR
       { wch: 20 }, // TANGGAL YUDISIUM
       { wch: 35 }, // NO SK
       { wch: 25 }, // NO PISN

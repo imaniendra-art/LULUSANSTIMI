@@ -158,6 +158,8 @@ export async function GET(request: NextRequest) {
       orderBy = [{ entryPeriod: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "exitPeriod" || sortBy === "exit") {
       orderBy = [{ exitPeriod: sortOrder }, { nim: "asc" }];
+    } else if (sortBy === "graduationYear" || sortBy === "year") {
+      orderBy = [{ graduationYear: sortOrder }, { yudisiumDate: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "batch" || sortBy === "pisnBatchNumber") {
       orderBy = [{ pisnBatchNumber: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "pisn" || sortBy === "pisnNumber") {
