@@ -116,13 +116,13 @@ export function Sidebar({
                 className="p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 title="LULUSANSTIMI — Admin Konsol"
               >
-                <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-300 dark:border-white/10 bg-slate-900 flex items-center justify-center shadow-xs">
+                <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 bg-white flex items-center justify-center shadow-xs">
                   <Image
                     src="/images/logo.jpg"
                     alt="Logo STIMI Yapmi"
                     width={32}
                     height={32}
-                    className="object-cover"
+                    className="object-contain p-0.5"
                     priority
                   />
                 </div>
@@ -139,13 +139,13 @@ export function Sidebar({
           ) : (
             <>
               <Link href="/admin" className="flex items-center gap-3 group">
-                <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-300 dark:border-white/10 bg-slate-900 flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+                <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
                   <Image
                     src="/images/logo.jpg"
                     alt="Logo STIMI Yapmi"
                     width={36}
                     height={36}
-                    className="object-cover"
+                    className="object-contain p-0.5"
                     priority
                   />
                 </div>

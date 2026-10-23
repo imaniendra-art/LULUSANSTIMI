@@ -111,8 +111,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <footer className="border-t border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#05070B] text-slate-500 dark:text-slate-400 text-xs py-5">
             <div className="w-full px-3 sm:px-5 lg:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden bg-slate-100 dark:bg-slate-900 flex-shrink-0">
-                  <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={28} height={28} />
+                <div className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
+                  <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={28} height={28} className="object-contain p-0.5" />
                 </div>
                 <p className="text-[11px]">
                   <strong className="text-slate-800 dark:text-slate-200">STIMI YAPMI MAKASSAR</strong> · Konsol Administrator BAAK · Kode PT 093046
@@ -139,13 +139,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#07090E]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.08] px-4 sm:px-6 lg:px-8 flex items-center justify-between flex-shrink-0">
         {/* Left: Brand Identity */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-300 dark:border-white/10 bg-slate-900 flex-shrink-0 flex items-center justify-center shadow-sm group-hover:scale-105 transition">
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
             <Image
               src="/images/logo.jpg"
               alt="Logo STIMI Yapmi"
               width={36}
               height={36}
-              className="object-cover"
+              className="object-contain p-0.5"
               priority
             />
           </div>
@@ -216,8 +216,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#05070B] text-slate-500 dark:text-slate-400 text-xs py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-slate-100 dark:bg-slate-900 flex-shrink-0">
-              <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={32} height={32} />
+            <div className="w-8 h-8 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
+              <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={32} height={32} className="object-contain p-0.5" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">

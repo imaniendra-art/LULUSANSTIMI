@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   title: "LULUSANSTIMI — Platform Repositori PISN & Kredensial Lulusan STIMI Yapmi",
   description:
     "Portal Resmi Kelulusan Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) Yapmi Makassar. Database Penomoran Ijazah Nasional (PISN/PIN Kemdikbud), Verifikasi Dokumen, dan Pelacakan Alumni.",
+  icons: {
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
   openGraph: {
     title: "LULUSANSTIMI — STIMI Yapmi Makassar",
     description: "SaaS Repositori PISN, Ijazah Digital & Tracer Study Terpadu",

@@ -95,13 +95,13 @@ export default function LoginPage() {
             <div>
               {/* Emblem */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-white p-1 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-xs">
                   <Image
                     src="/images/logo.jpg"
                     alt="STIMI Yapmi"
                     width={40}
                     height={40}
-                    className="object-cover rounded-lg"
+                    className="object-contain"
                   />
                 </div>
                 <div>
