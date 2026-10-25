@@ -194,10 +194,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 text-[11px]">
+              <div className="flex items-center gap-2 text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse"></span>
                 <span className="text-teal-900 dark:text-teal-200 font-medium">
-                  Server Hard Disk On-Premise Aktif (Port 3022)
+                  Sistem Repositori BAAK Terhubung · PUSDATIN
                 </span>
               </div>
             </div>
@@ -235,13 +235,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href="/"
             className="hover:text-teal-600 dark:hover:text-teal-300 transition"
           >
-            Verifikasi Publik
+            Verifikasi Ijazah
           </Link>
           <a
             href="/#layanan"
             className="hover:text-teal-600 dark:hover:text-teal-300 transition"
           >
-            Arsitektur
+            Layanan Kelulusan
           </a>
           <a
             href="https://pddikti.kemdiktisaintek.go.id"
@@ -309,41 +309,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Public Floating Island Footer */}
-      <footer className="mx-3 sm:mx-6 lg:mx-8 my-6 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-6 px-4 sm:px-6 shadow-md shadow-teal-950/5 dark:shadow-black/20">
-        <div className="max-w-5xl xl:max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg border border-teal-300/60 dark:border-teal-500/30 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
+      <footer className="mx-3 sm:mx-6 lg:mx-8 my-6 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-6 sm:py-8 px-5 sm:px-8 shadow-md shadow-teal-950/5 dark:shadow-black/20">
+        <div className="max-w-5xl xl:max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-teal-300/60 dark:border-teal-500/30 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
               <Image
                 src="/images/logo.jpg"
                 alt="Logo STIMI YAPMI Makassar"
-                width={28}
-                height={28}
+                width={36}
+                height={36}
                 className="object-contain p-0.5"
               />
             </div>
             <div>
-              <p className="text-xs font-bold text-teal-950 dark:text-white">
-                STIMI YAPMI MAKASSAR · Kode PT 093046
+              <h4 className="text-xs sm:text-sm font-bold text-teal-950 dark:text-white tracking-tight">
+                Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar
+              </h4>
+              <p className="text-[11px] text-teal-800/80 dark:text-teal-200/80 mt-0.5">
+                Kode Perguruan Tinggi: 093046 · LLDIKTI Wilayah IX (Sulselbar & Sultra)
               </p>
-              <p className="text-[11px] text-teal-700/80 dark:text-teal-300/80">
-                LLDIKTI Wilayah IX · Repositori Resmi Kredensial & PISN Kemdiktisaintek
+              <p className="text-[11px] text-teal-700/70 dark:text-teal-300/70">
+                Dikelola oleh Biro Administrasi Akademik & Kemahasiswaan (BAAK) bersama PUSDATIN
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse" />
-              <span className="text-teal-900 dark:text-teal-200 font-medium">
-                Server Hard Disk On-Premise (Port 3022)
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5 text-[11px]">
+            <div className="text-left md:text-right">
+              <span className="block text-teal-700/70 dark:text-teal-300/70 text-[10px] uppercase tracking-wider">
+                Alamat Kampus
               </span>
-            </span>
-            <span>·</span>
+              <span className="text-teal-950 dark:text-teal-100 font-medium">
+                Jl. Perintis Kemerdekaan Km. 9, Tamalanrea, Makassar
+              </span>
+            </div>
+            <div className="h-5 w-[1px] bg-teal-200/80 dark:bg-teal-700 hidden sm:block" />
             <Link
               href="/login"
-              className="text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200/80 dark:border-teal-500/30 bg-teal-50/70 dark:bg-teal-950/70 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-semibold text-xs transition shadow-xs"
             >
-              Portal Staf BAAK
+              <Lock className="h-3 w-3 text-teal-600 dark:text-teal-400" />
+              <span>Portal BAAK</span>
             </Link>
           </div>
         </div>
