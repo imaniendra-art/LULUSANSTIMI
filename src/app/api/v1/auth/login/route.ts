@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         id: admin.id,
         email: admin.email || "baak@stimi-yapmi.ac.id",
         nim: admin.nim || "ADMIN001",
-        fullName: "Staf BAAK STIMI Yapmi",
+        fullName: "Staf BAAK STIMI YAPMI Makassar",
         role: "ADMIN_BAAK",
       };
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       id: user?.id || "demo-baak-id",
       email: user?.email || "baak@stimi-yapmi.ac.id",
       nim: user?.nim || "ADMIN001",
-      fullName: user?.alumni?.[0]?.fullName || "Staf BAAK STIMI Yapmi",
+      fullName: user?.alumni?.[0]?.fullName || "Staf BAAK STIMI YAPMI Makassar",
       role: user?.role || "ADMIN_BAAK",
     };
 

@@ -9,6 +9,7 @@ export function ensureStorageDirs() {
     path.join(BASE_STORAGE_DIR, "credentials/transkrip"),
     path.join(BASE_STORAGE_DIR, "legalizations/stamped"),
     path.join(BASE_STORAGE_DIR, "avatars"),
+    path.join(BASE_STORAGE_DIR, "sk-yudisium"),
   ];
 
   for (const dir of dirs) {
@@ -16,6 +17,62 @@ export function ensureStorageDirs() {
       fs.mkdirSync(dir, { recursive: true });
     }
   }
+}
+
+export function sanitizeSkNumber(sk: string): string {
+  return sk.replace(/[/\\?%*:|"<>]/g, "_").trim();
+}
+
+export async function saveDecreePdf(decreeNumber: string, buffer: Buffer, originalName?: string) {
+  ensureStorageDirs();
+  const safeName = sanitizeSkNumber(decreeNumber);
+  const targetDir = path.join(BASE_STORAGE_DIR, "sk-yudisium");
+  const fileName = `SK_${safeName}.pdf`;
+  const absolutePath = path.join(targetDir, fileName);
+  const relativePath = path.posix.join("storage/uploads/sk-yudisium", fileName);
+
+  await fs.promises.writeFile(absolutePath, buffer);
+  return {
+    fileName,
+    relativePath,
+    absolutePath,
+    size: buffer.length,
+  };
+}
+
+export function getDecreePdfPath(decreeNumber: string): { exists: boolean; absolutePath: string; relativePath: string } {
+  ensureStorageDirs();
+  const safeName = sanitizeSkNumber(decreeNumber);
+  const fileName = `SK_${safeName}.pdf`;
+  const absolutePath = path.join(BASE_STORAGE_DIR, "sk-yudisium", fileName);
+  const relativePath = path.posix.join("storage/uploads/sk-yudisium", fileName);
+  return {
+    exists: fs.existsSync(absolutePath),
+    absolutePath,
+    relativePath,
+  };
+}
+
+export function listAllUploadedDecrees(): Record<string, { fileName: string; size: number; uploadedAt: string }> {
+  ensureStorageDirs();
+  const targetDir = path.join(BASE_STORAGE_DIR, "sk-yudisium");
+  const result: Record<string, { fileName: string; size: number; uploadedAt: string }> = {};
+
+  if (!fs.existsSync(targetDir)) return result;
+
+  const files = fs.readdirSync(targetDir);
+  for (const f of files) {
+    if (f.endsWith(".pdf") && f.startsWith("SK_")) {
+      const stat = fs.statSync(path.join(targetDir, f));
+      const key = f.replace(/^SK_/, "").replace(/\.pdf$/, "");
+      result[key] = {
+        fileName: f,
+        size: stat.size,
+        uploadedAt: stat.mtime.toISOString(),
+      };
+    }
+  }
+  return result;
 }
 
 export async function saveUploadedFile(params: {
@@ -45,7 +102,6 @@ export async function saveUploadedFile(params: {
 }
 
 export function getAbsoluteFilePath(relativePath: string): string {
-  // If already absolute
   if (path.isAbsolute(relativePath)) return relativePath;
   return path.join(process.cwd(), relativePath);
 }

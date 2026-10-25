@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { saveUploadedFile } from "@/lib/storage";
+import { invalidateStatsCache } from "@/lib/statsCache";
+import { inferCohortYearFromNim, isCohortBelow2020 } from "@/lib/cohort";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +13,7 @@ export async function GET(request: NextRequest) {
     const batch = searchParams.get("batch") || "";
     const registrationType = searchParams.get("registrationType") || "";
     const hasPisn = searchParams.get("hasPisn"); // "true" or "false"
+    const hasThesis = searchParams.get("hasThesis"); // "true" or "false"
     const yudisiumDateParam = searchParams.get("yudisiumDate") || "";
     const entryPeriodParam = searchParams.get("entryPeriod") || "";
     const cohortParam = searchParams.get("cohort") || searchParams.get("angkatan") || "";
@@ -35,6 +38,7 @@ export async function GET(request: NextRequest) {
         { entryPeriod: { contains: query, mode: "insensitive" } },
         { exitPeriod: { contains: query, mode: "insensitive" } },
         { thesisTitle: { contains: query, mode: "insensitive" } },
+        { certificateNumber: { contains: query, mode: "insensitive" } },
       ];
     }
 
@@ -108,19 +112,45 @@ export async function GET(request: NextRequest) {
     }
 
     if (fileStatusParam === "has_both") {
-      where.AND = [
-        { ijazahScan: { isNot: null } },
-        { transkripScan: { isNot: null } },
-      ];
+      const cond = {
+        AND: [
+          { ijazahScan: { isSet: true } },
+          { transkripScan: { isSet: true } },
+        ],
+      };
+      if (Array.isArray(where.AND)) where.AND.push(cond);
+      else if (where.AND) where.AND = [where.AND, cond];
+      else where.AND = [cond];
     } else if (fileStatusParam === "has_ijazah") {
-      where.ijazahScan = { isNot: null };
+      const cond = { ijazahScan: { isSet: true } };
+      if (Array.isArray(where.AND)) where.AND.push(cond);
+      else if (where.AND) where.AND = [where.AND, cond];
+      else where.AND = [cond];
+    } else if (fileStatusParam === "no_ijazah") {
+      const cond = {
+        OR: [
+          { ijazahScan: { isSet: false } },
+          { ijazahScan: { is: null } },
+        ],
+      };
+      if (Array.isArray(where.AND)) where.AND.push(cond);
+      else if (where.AND) where.AND = [where.AND, cond];
+      else where.AND = [cond];
     } else if (fileStatusParam === "has_transkrip") {
-      where.transkripScan = { isNot: null };
+      const cond = { transkripScan: { isSet: true } };
+      if (Array.isArray(where.AND)) where.AND.push(cond);
+      else if (where.AND) where.AND = [where.AND, cond];
+      else where.AND = [cond];
     } else if (fileStatusParam === "no_files") {
-      where.AND = [
-        { ijazahScan: { is: null } },
-        { transkripScan: { is: null } },
-      ];
+      const cond = {
+        AND: [
+          { OR: [{ ijazahScan: { isSet: false } }, { ijazahScan: { is: null } }] },
+          { OR: [{ transkripScan: { isSet: false } }, { transkripScan: { is: null } }] },
+        ],
+      };
+      if (Array.isArray(where.AND)) where.AND.push(cond);
+      else if (where.AND) where.AND = [where.AND, cond];
+      else where.AND = [cond];
     }
 
     if (gpaRangeParam === "cumlaude") {
@@ -133,10 +163,9 @@ export async function GET(request: NextRequest) {
 
     if (hasPisn === "true") {
       const condition = {
-        AND: [
-          { pisnNumber: { isSet: true } },
-          { pisnNumber: { not: null } },
-          { pisnNumber: { not: "" } },
+        OR: [
+          { AND: [{ pisnNumber: { not: null } }, { pisnNumber: { not: "" } }] },
+          { AND: [{ certificateNumber: { not: null } }, { certificateNumber: { not: "" } }] },
         ],
       };
       if (Array.isArray(where.AND)) {
@@ -148,12 +177,31 @@ export async function GET(request: NextRequest) {
       }
     } else if (hasPisn === "false") {
       const condition = {
-        OR: [
-          { pisnNumber: { isSet: false } },
-          { pisnNumber: null },
-          { pisnNumber: "" },
+        AND: [
+          { OR: [{ pisnNumber: { isSet: false } }, { pisnNumber: null }, { pisnNumber: "" }] },
+          { OR: [{ certificateNumber: { isSet: false } }, { certificateNumber: null }, { certificateNumber: "" }] },
         ],
       };
+      if (Array.isArray(where.AND)) {
+        where.AND.push(condition);
+      } else if (where.AND) {
+        where.AND = [where.AND, condition];
+      } else {
+        where.AND = [condition];
+      }
+    }
+
+    if (hasThesis === "true") {
+      const condition = { thesisTitle: { not: "" } };
+      if (Array.isArray(where.AND)) {
+        where.AND.push(condition);
+      } else if (where.AND) {
+        where.AND = [where.AND, condition];
+      } else {
+        where.AND = [condition];
+      }
+    } else if (hasThesis === "false") {
+      const condition = { thesisTitle: "" };
       if (Array.isArray(where.AND)) {
         where.AND.push(condition);
       } else if (where.AND) {
@@ -185,6 +233,10 @@ export async function GET(request: NextRequest) {
       orderBy = [{ pisnNumber: sortOrder }, { nim: "asc" }];
     } else if (sortBy === "registrationType" || sortBy === "jalur") {
       orderBy = [{ registrationType: sortOrder }, { nim: "asc" }];
+    } else if (sortBy === "cohort" || sortBy === "cohortYear" || sortBy === "angkatan") {
+      orderBy = [{ cohortYear: sortOrder }, { nim: "asc" }];
+    } else if (sortBy === "prodi" || sortBy === "prodiCode") {
+      orderBy = [{ prodiCode: sortOrder }, { nim: "asc" }];
     }
 
     const [items, total] = await Promise.all([
@@ -240,7 +292,7 @@ export async function POST(request: NextRequest) {
 
     const yudisiumDateStr = formData.get("yudisiumDate") as string;
     const yudisiumDecreeNumber = (formData.get("yudisiumDecreeNumber") as string) || "";
-    const thesisTitle = (formData.get("thesisTitle") as string) || "Telah memenuhi syarat kelulusan";
+    const thesisTitle = (formData.get("thesisTitle") as string) || "";
     const pisnNumber = (formData.get("pisnNumber") as string) || "";
     const pisnBatchNumber = (formData.get("pisnBatchNumber") as string) || "";
     const certificateNumber = (formData.get("certificateNumber") as string) || "";
@@ -269,8 +321,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Default Entry & Exit Period format compact (e.g. 2022-1, 2025-2)
-    const nimPrefix = nim.substring(0, 2);
-    const entryYear = parseInt(nimPrefix, 10) ? 2000 + parseInt(nimPrefix, 10) : graduationYear - 4;
+    const cohortYearParam = formData.get("cohortYear") as string;
+    const parsedCohortYear = cohortYearParam ? parseInt(cohortYearParam, 10) : NaN;
+    const entryYear = !isNaN(parsedCohortYear)
+      ? parsedCohortYear
+      : inferCohortYearFromNim(nim, graduationYear - 4);
+
+    if (entryYear < 2020) {
+      return NextResponse.json(
+        { error: `Pendaftaran data alumni angkatan di bawah 2020 (< 2020) tidak diizinkan di sistem.` },
+        { status: 400 }
+      );
+    }
+
     const finalEntryPeriod = entryPeriod || `${entryYear}-1`;
     const finalExitPeriod = exitPeriod || `${graduationYear - 1}-2`;
 
@@ -339,6 +402,8 @@ export async function POST(request: NextRequest) {
         transkripScan,
       },
     });
+
+    invalidateStatsCache();
 
     return NextResponse.json({
       success: true,

@@ -88,7 +88,7 @@ model Alumni {
   prodiName              String            // "S1 Manajemen", "S2 Manajemen"
   degree                 String            @default("S1") // "S1" atau "S2"
   
-  registrationType       RegistrationType  @default(PESERTA_DIDIK_BARU) // "Peserta Didik Baru" atau "Konversi Nilai atau Transfer Nilai"
+  registrationType       RegistrationType? // Nullable hingga disinkronkan dari file Mahasiswa Feeder
   entryPeriod            String?           // e.g. "2022/2023 Ganjil" (Opsi A)
   exitPeriod             String?           // e.g. "2025/2026 Genap" (Opsi A)
   cohortYear             Int?              // Angkatan masuk

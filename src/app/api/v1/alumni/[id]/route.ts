@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { saveUploadedFile } from "@/lib/storage";
+import { invalidateStatsCache } from "@/lib/statsCache";
 
-function buildAlumniLookup(id: string) {
+async function findAlumniByIdOrNim(id: string) {
   const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-  return isObjectId ? { OR: [{ id }, { nim: id }] } : { nim: id };
+  if (isObjectId) {
+    const byId = await prisma.alumni.findUnique({ where: { id } });
+    if (byId) return byId;
+  }
+  return await prisma.alumni.findUnique({ where: { nim: id } });
 }
 
 export async function GET(
@@ -13,9 +18,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const alumni = await prisma.alumni.findFirst({
-      where: buildAlumniLookup(id),
-    });
+    const alumni = await findAlumniByIdOrNim(id);
 
     if (!alumni) {
       return NextResponse.json(
@@ -42,9 +45,7 @@ export async function PUT(
     const { id } = await params;
     const formData = await request.formData();
 
-    const existing = await prisma.alumni.findFirst({
-      where: buildAlumniLookup(id),
-    });
+    const existing = await findAlumniByIdOrNim(id);
 
     if (!existing) {
       return NextResponse.json(
@@ -66,6 +67,7 @@ export async function PUT(
       | "RPL_TRANSFER_SKS"
       | "RPL_KONVERSI_SKS"
       | "KONVERSI_TRANSFER_NILAI";
+    const cohortYearStr = formData.get("cohortYear") as string;
     const entryPeriod = formData.get("entryPeriod") as string;
     const exitPeriod = formData.get("exitPeriod") as string;
 
@@ -78,6 +80,9 @@ export async function PUT(
     const gpaStr = formData.get("gpa") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const personalEmail = formData.get("personalEmail") as string;
+    const cascadeSameDate =
+      formData.get("cascadeSameDate") === "true" ||
+      formData.get("applyToSameDate") === "true";
 
     const updateData: Record<string, unknown> = {};
 
@@ -88,6 +93,15 @@ export async function PUT(
       updateData.degree = degree;
     }
     if (registrationType) updateData.registrationType = registrationType;
+    if (cohortYearStr !== undefined && cohortYearStr !== null && cohortYearStr !== "") {
+      const parsedCohort = parseInt(cohortYearStr, 10);
+      if (!isNaN(parsedCohort)) {
+        updateData.cohortYear = parsedCohort;
+      }
+    } else if (entryPeriod) {
+      const m = entryPeriod.match(/^(\d{4})/);
+      if (m) updateData.cohortYear = parseInt(m[1], 10);
+    }
     if (entryPeriod !== undefined) updateData.entryPeriod = entryPeriod;
     if (exitPeriod !== undefined) updateData.exitPeriod = exitPeriod;
 
@@ -97,7 +111,7 @@ export async function PUT(
       updateData.graduationYear = yDate.getFullYear();
     }
     if (yudisiumDecreeNumber !== undefined) updateData.yudisiumDecreeNumber = yudisiumDecreeNumber;
-    if (thesisTitle) updateData.thesisTitle = thesisTitle;
+    if (thesisTitle !== undefined) updateData.thesisTitle = thesisTitle ? thesisTitle.trim() : "";
     if (pisnNumber !== undefined) updateData.pisnNumber = pisnNumber ? pisnNumber.trim() : null;
     if (pisnBatchNumber !== undefined) updateData.pisnBatchNumber = pisnBatchNumber ? pisnBatchNumber.trim() : null;
     if (certificateNumber !== undefined) updateData.certificateNumber = certificateNumber ? certificateNumber.trim() : null;
@@ -148,10 +162,37 @@ export async function PUT(
       data: updateData,
     });
 
+    let cascadedCount = 0;
+    const targetYudisiumDate = yudisiumDateStr ? new Date(yudisiumDateStr) : existing.yudisiumDate;
+    if (cascadeSameDate && targetYudisiumDate && yudisiumDecreeNumber !== undefined) {
+      const startOfDay = new Date(targetYudisiumDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetYudisiumDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      const batchRes = await prisma.alumni.updateMany({
+        where: {
+          yudisiumDate: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        data: {
+          yudisiumDecreeNumber: yudisiumDecreeNumber ? yudisiumDecreeNumber.trim() : null,
+        },
+      });
+      cascadedCount = batchRes.count;
+    }
+
+    invalidateStatsCache();
+
     return NextResponse.json({
       success: true,
-      message: "Data lulusan berhasil diperbarui",
+      message: cascadedCount > 1
+        ? `Nomor SK berhasil diperbarui dan diseragamkan ke ${cascadedCount} mahasiswa pada tanggal yudisium yang sama.`
+        : "Data lulusan berhasil diperbarui",
       data: updated,
+      cascadedCount,
     });
   } catch (error) {
     console.error("Update alumni error:", error);
@@ -170,9 +211,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await prisma.alumni.findFirst({
-      where: buildAlumniLookup(id),
-    });
+    const existing = await findAlumniByIdOrNim(id);
 
     if (!existing) {
       return NextResponse.json(
@@ -192,10 +231,38 @@ export async function PATCH(
       data: updateData,
     });
 
+    let cascadedCount = 0;
+    const cascadeSameDate = Boolean(body.cascadeSameDate || body.applyToSameDate);
+    const targetYudisiumDate = existing.yudisiumDate;
+    if (cascadeSameDate && targetYudisiumDate && body.yudisiumDecreeNumber !== undefined) {
+      const startOfDay = new Date(targetYudisiumDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetYudisiumDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      const batchRes = await prisma.alumni.updateMany({
+        where: {
+          yudisiumDate: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        data: {
+          yudisiumDecreeNumber: body.yudisiumDecreeNumber ? String(body.yudisiumDecreeNumber).trim() : null,
+        },
+      });
+      cascadedCount = batchRes.count;
+    }
+
+    invalidateStatsCache();
+
     return NextResponse.json({
       success: true,
-      message: "Data lulusan berhasil diperbarui",
+      message: cascadedCount > 1
+        ? `Nomor SK berhasil diperbarui dan diseragamkan ke ${cascadedCount} mahasiswa pada tanggal yudisium yang sama.`
+        : "Data lulusan berhasil diperbarui",
       data: updated,
+      cascadedCount,
     });
   } catch (error) {
     console.error("Patch alumni error:", error);
@@ -212,9 +279,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const existing = await prisma.alumni.findFirst({
-      where: buildAlumniLookup(id),
-    });
+    const existing = await findAlumniByIdOrNim(id);
 
     if (!existing) {
       return NextResponse.json(
@@ -224,6 +289,8 @@ export async function DELETE(
     }
 
     await prisma.alumni.delete({ where: { id: existing.id } });
+
+    invalidateStatsCache();
 
     return NextResponse.json({
       success: true,

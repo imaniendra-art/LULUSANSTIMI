@@ -3,125 +3,202 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Menu,
   Sun,
   Moon,
-  Lock,
   ExternalLink,
-  ShieldCheck,
-  GraduationCap,
-  Sparkles,
+  LogOut,
+  Lock,
 } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
 
+function AdminHeader({
+  mobileOpen,
+  setMobileOpen,
+  theme,
+  toggleTheme,
+}: {
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
+  theme: string;
+  toggleTheme: () => void;
+}) {
+  const searchParams = useSearchParams();
+  const tab = searchParams?.get("tab");
+  const filter = searchParams?.get("filter");
+
+  const breadcrumbTitle = !tab
+    ? "Dashboard BAAK"
+    : tab === "pisn" || (tab === "repo" && filter !== "skripsi")
+    ? "Menu PISN — Repositori & Monitoring Nomor Ijazah Nasional"
+    : tab === "skripsi" || filter === "skripsi"
+    ? "Menu IPK & Judul Skripsi — Rekapitulasi Nilai & Judul Tesis"
+    : tab === "berkas"
+    ? "Menu Ijazah & SK Yudisium — Berkas Scan & Dokumen Keputusan Ketua"
+    : "Konsol BAAK";
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch {
+      window.location.href = "/login";
+    }
+  };
+
+  return (
+    <header className="sticky top-3 z-30 mx-3 sm:mx-5 lg:mx-6 mt-3 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 px-3 sm:px-5 flex items-center justify-between flex-shrink-0 shadow-lg shadow-teal-950/5 dark:shadow-black/30">
+      {/* Left: Mobile Drawer Trigger & Dynamic Breadcrumb */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="lg:hidden p-2 rounded-xl border border-teal-200/80 dark:border-teal-500/30 text-teal-800 dark:text-teal-200 hover:bg-teal-100/60 dark:hover:bg-teal-900/40 transition cursor-pointer"
+          title="Buka Menu Samping"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-teal-950 dark:text-white">
+          {breadcrumbTitle}
+        </h1>
+      </div>
+
+      {/* Right: Quick Action to Public Web, Theme Toggle, Profile & Logout */}
+      <div className="flex items-center gap-2 sm:gap-2.5">
+        <Link
+          href="/"
+          target="_blank"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200/80 dark:border-teal-500/30 bg-teal-50/70 dark:bg-teal-950/70 text-teal-900 dark:text-teal-200 hover:text-teal-600 dark:hover:text-teal-400 text-xs font-semibold transition shadow-xs"
+          title="Lihat Halaman Verifikasi Publik di Tab Baru"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+          <span className="hidden sm:inline">Web Publik</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Aktifkan Mode Terang" : "Aktifkan Mode Gelap"}
+          className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-teal-200/80 dark:border-teal-500/30 bg-teal-50/70 dark:bg-teal-950/70 text-teal-800 dark:text-teal-200 hover:scale-105 transition shadow-xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4 text-amber-300" />
+          ) : (
+            <Moon className="h-4 w-4 text-teal-700" />
+          )}
+          <span className="hidden md:inline text-[11px] font-medium text-teal-800 dark:text-teal-300">
+            {theme === "dark" ? "Terang" : "Gelap"}
+          </span>
+        </button>
+
+        <div className="h-5 w-[1px] bg-teal-200/80 dark:bg-teal-500/30 mx-0.5" />
+
+        <div className="hidden md:flex flex-col text-right">
+          <span className="text-xs font-semibold text-teal-950 dark:text-teal-100 leading-tight">
+            Staf BAAK
+          </span>
+          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-mono leading-tight">
+            STIMI YAPMI Makassar
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          title="Keluar dari sesi BAAK"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-xs font-semibold transition cursor-pointer"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Keluar</span>
+        </button>
+      </div>
+    </header>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith("/admin");
+  const isLoginRoute = pathname === "/login";
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
-  // ==========================================================================
-  // 1. ADMIN ROUTE LAYOUT (/admin) - PISN Repository Console
-  // ==========================================================================
+  // 0. STANDALONE LOGIN ROUTE (/login)
+  if (isLoginRoute) {
+    return <>{children}</>;
+  }
+
+  // 1. ADMIN ROUTE LAYOUT (/admin)
   if (isAdminRoute) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#07090E] text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <div className="min-h-screen flex flex-col bg-[#f4faf9] dark:bg-[#021013] text-teal-950 dark:text-teal-50 transition-colors duration-200 font-sans selection:bg-teal-500 selection:text-white">
         {/* Sidebar (Desktop w-20 or w-64, Mobile Drawer) */}
-        <Sidebar
-          mobileOpen={mobileOpen}
-          setMobileOpen={setMobileOpen}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-        />
+        <React.Suspense fallback={null}>
+          <Sidebar
+            mobileOpen={mobileOpen}
+            setMobileOpen={setMobileOpen}
+            collapsed={sidebarCollapsed}
+            setCollapsed={setSidebarCollapsed}
+          />
+        </React.Suspense>
 
-        {/* Dynamic Left Padding with Smooth 300ms Expansion */}
+        {/* Dynamic Left Padding with Smooth 300ms Expansion for Floating Sidebar */}
         <div
           className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
-            sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
+            sidebarCollapsed ? "lg:pl-[96px]" : "lg:pl-[284px]"
           }`}
         >
-          {/* Admin Sticky Topbar - Exact h-16 height matching Sidebar Header */}
-          <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#07090E]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.08] px-3 sm:px-5 lg:px-6 flex items-center justify-between flex-shrink-0">
-            {/* Left: Mobile Drawer Trigger & Breadcrumb */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setMobileOpen(true)}
-                className="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                title="Buka Menu Samping"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-
-              {/* Breadcrumb Hierarchy */}
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white hidden sm:inline">
-                  Portal BAAK
-                </span>
-                <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">/</span>
-                <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20">
-                  Repositori PISN & Kredensial
-                </span>
-              </div>
-            </div>
-
-            {/* Right: Quick Action to Public Web & Theme Toggle */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Button to View Public Page in 1-Click */}
-              <Link
-                href="/"
-                target="_blank"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-500/30 text-xs font-semibold transition shadow-xs"
-                title="Lihat Halaman Verifikasi Publik di Tab Baru"
-              >
-                <ExternalLink className="h-3.5 w-3.5 text-indigo-500" />
-                <span className="hidden sm:inline">Lihat Web Publik</span>
-              </Link>
-
-              {/* Theme Toggle Button */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                title={theme === "dark" ? "Aktifkan Mode Terang" : "Aktifkan Mode Gelap"}
-                className="p-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:scale-105 transition shadow-xs flex items-center gap-1.5 text-xs font-semibold"
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4 text-amber-400" />
-                ) : (
-                  <Moon className="h-4 w-4 text-indigo-600" />
-                )}
-                <span className="hidden md:inline text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                  {theme === "dark" ? "Terang" : "Gelap"}
-                </span>
-              </button>
-            </div>
-          </header>
+          {/* Admin Floating Island Header */}
+          <React.Suspense
+            fallback={
+              <header className="sticky top-3 z-30 mx-3 sm:mx-5 lg:mx-6 mt-3 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 border border-teal-200/90 dark:border-teal-500/30" />
+            }
+          >
+            <AdminHeader
+              mobileOpen={mobileOpen}
+              setMobileOpen={setMobileOpen}
+              theme={theme}
+              toggleTheme={toggleTheme}
+            />
+          </React.Suspense>
 
           {/* Admin Main Viewport */}
-          <main className="flex-1 w-full px-3 sm:px-5 lg:px-6 py-5 sm:py-6">
+          <main className="flex-1 w-full px-3 sm:px-5 lg:px-6 py-4">
             {children}
           </main>
 
-          {/* Admin Footer */}
-          <footer className="border-t border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#05070B] text-slate-500 dark:text-slate-400 text-xs py-5">
-            <div className="w-full px-3 sm:px-5 lg:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Admin Floating Island Footer */}
+          <footer className="mx-3 sm:mx-5 lg:mx-6 my-3 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-3.5 px-4 sm:px-6 shadow-md shadow-teal-950/5 dark:shadow-black/20">
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
-                  <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={28} height={28} className="object-contain p-0.5" />
+                <div className="w-6 h-6 rounded-lg border border-teal-300/60 dark:border-teal-500/30 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
+                  <Image
+                    src="/images/logo.jpg"
+                    alt="Logo STIMI YAPMI Makassar"
+                    width={24}
+                    height={24}
+                    className="object-contain p-0.5"
+                  />
                 </div>
                 <p className="text-[11px]">
-                  <strong className="text-slate-800 dark:text-slate-200">STIMI YAPMI MAKASSAR</strong> · Konsol Administrator BAAK · Kode PT 093046
+                  <strong className="text-teal-950 dark:text-teal-100">
+                    STIMI YAPMI MAKASSAR
+                  </strong>{" "}
+                  · Repositori Kredensial & PISN · Kode PT 093046
                 </p>
               </div>
 
               <div className="flex items-center gap-3 text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                <span>Server Hard Disk On-Premise Aktif (Port 3022)</span>
+                <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse"></span>
+                <span className="text-teal-900 dark:text-teal-200 font-medium">
+                  Server Hard Disk On-Premise Aktif (Port 3022)
+                </span>
               </div>
             </div>
           </footer>
@@ -130,113 +207,143 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ==========================================================================
-  // 2. PUBLIC ROUTE LAYOUT (/ and /login) - Full Width Without Sidebar
-  // ==========================================================================
+  // 2. PUBLIC PORTAL LAYOUT
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#07090E] text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* Public Navbar - Height h-16, full width with clean border */}
-      <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#07090E]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.08] px-4 sm:px-6 lg:px-8 flex items-center justify-between flex-shrink-0">
-        {/* Left: Brand Identity */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+    <div className="min-h-screen flex flex-col bg-[#f4faf9] dark:bg-[#021013] text-teal-950 dark:text-teal-50 transition-colors duration-200 font-sans selection:bg-teal-500 selection:text-white">
+      {/* Public Floating Island Header */}
+      <header className="sticky top-3 z-40 mx-3 sm:mx-6 lg:mx-8 mt-3 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 px-4 sm:px-6 flex items-center justify-between shadow-lg shadow-teal-950/5 dark:shadow-black/30">
+        {/* Brand */}
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
+          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border border-teal-300/80 dark:border-teal-500/30 bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition flex-shrink-0">
             <Image
               src="/images/logo.jpg"
-              alt="Logo STIMI Yapmi"
-              width={36}
-              height={36}
+              alt="Logo STIMI YAPMI Makassar"
+              width={40}
+              height={40}
               className="object-contain p-0.5"
               priority
             />
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">
-                LULUSAN<span className="text-indigo-600 dark:text-indigo-400">STIMI</span>
-              </span>
-              <span className="text-[9px] font-mono bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">
-                v2.4
-              </span>
-            </div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 tracking-tight font-medium hidden sm:inline">
-              STIMI Yapmi Makassar · Verifikasi Kredensial & PISN
-            </span>
-          </div>
+          <span className="font-black text-xl sm:text-2xl tracking-tight text-teal-950 dark:text-white">
+            LULUSAN<span className="text-teal-600 dark:text-teal-400">STIMI</span>
+          </span>
         </Link>
 
-        {/* Center: Public Quick Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
-          <Link href="/" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+        {/* Center / Nav */}
+        <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-xs font-semibold text-teal-900/80 dark:text-teal-200/80">
+          <Link
+            href="/"
+            className="hover:text-teal-600 dark:hover:text-teal-300 transition"
+          >
             Verifikasi Publik
           </Link>
-          <a href="/#layanan" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition">
-            Layanan Alumni
+          <a
+            href="/#layanan"
+            className="hover:text-teal-600 dark:hover:text-teal-300 transition"
+          >
+            Arsitektur
           </a>
-          <a href="/#layanan" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition">
-            Arsitektur Repositori
+          <a
+            href="https://pddikti.kemdiktisaintek.go.id"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-teal-600 dark:hover:text-teal-300 transition inline-flex items-center gap-1"
+            title="Pangkalan Data Pendidikan Tinggi Kemdiktisaintek"
+          >
+            <span>PDDIKTI</span>
+            <ExternalLink className="h-3 w-3 text-teal-500/70" />
+          </a>
+          <a
+            href="https://pisn.kemdiktisaintek.go.id/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-teal-600 dark:hover:text-teal-300 transition inline-flex items-center gap-1"
+            title="Penomoran Ijazah Nasional (PISN) Kemdiktisaintek"
+          >
+            <span>PISN</span>
+            <ExternalLink className="h-3 w-3 text-teal-500/70" />
+          </a>
+          <a
+            href="https://tracerstudy.kemdiktisaintek.go.id/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-teal-600 dark:hover:text-teal-300 transition inline-flex items-center gap-1"
+            title="Portal Tracer Study Kemdiktisaintek"
+          >
+            <span>Tracer Study</span>
+            <ExternalLink className="h-3 w-3 text-teal-500/70" />
           </a>
         </nav>
 
-        {/* Right: Theme Toggle & Admin Login CTA */}
+        {/* Right Actions: Theme Toggle & Prominent Login Button */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Direct Theme Switcher Button */}
           <button
             type="button"
             onClick={toggleTheme}
             title={theme === "dark" ? "Aktifkan Mode Terang" : "Aktifkan Mode Gelap"}
-            className="p-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:scale-105 transition shadow-xs flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 rounded-xl border border-teal-200/80 dark:border-teal-500/30 bg-teal-50/70 dark:bg-teal-950/70 text-teal-800 dark:text-teal-200 hover:scale-105 transition shadow-xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
           >
             {theme === "dark" ? (
-              <Sun className="h-4 w-4 text-amber-400" />
+              <Sun className="h-4 w-4 text-amber-300" />
             ) : (
-              <Moon className="h-4 w-4 text-indigo-600" />
+              <Moon className="h-4 w-4 text-teal-700" />
             )}
-            <span className="hidden sm:inline text-[11px] font-medium text-slate-600 dark:text-slate-400">
+            <span className="hidden sm:inline text-[11px] font-medium text-teal-800 dark:text-teal-300">
               {theme === "dark" ? "Terang" : "Gelap"}
             </span>
           </button>
 
-          {/* Prominent Admin Login / Portal BAAK Button */}
           <Link
-            href="/admin"
-            className="relative inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 shadow-md shadow-indigo-600/20 border border-indigo-400/30 transition duration-200 group"
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 shadow-sm border border-teal-400/40 transition cursor-pointer group"
           >
-            <Lock className="h-3.5 w-3.5 text-indigo-200 group-hover:rotate-12 transition duration-200" />
-            <span>Masuk Portal BAAK</span>
+            <Lock className="h-3.5 w-3.5 text-teal-200 group-hover:rotate-12 transition duration-200" />
+            <span>Login Staf</span>
           </Link>
         </div>
       </header>
 
-      {/* Public Main Content (Full-Width Centered Container) */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content Constrained Container */}
+      <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {children}
       </main>
 
-      {/* Public Footer */}
-      <footer className="border-t border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#05070B] text-slate-500 dark:text-slate-400 text-xs py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* Public Floating Island Footer */}
+      <footer className="mx-3 sm:mx-6 lg:mx-8 my-6 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-6 px-4 sm:px-6 shadow-md shadow-teal-950/5 dark:shadow-black/20">
+        <div className="max-w-5xl xl:max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
-              <Image src="/images/logo.jpg" alt="STIMI Yapmi" width={32} height={32} className="object-contain p-0.5" />
+            <div className="w-7 h-7 rounded-lg border border-teal-300/60 dark:border-teal-500/30 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
+              <Image
+                src="/images/logo.jpg"
+                alt="Logo STIMI YAPMI Makassar"
+                width={28}
+                height={28}
+                className="object-contain p-0.5"
+              />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                SEKOLAH TINGGI ILMU MANAJEMEN INDONESIA (STIMI) YAPMI MAKASSAR
+              <p className="text-xs font-bold text-teal-950 dark:text-white">
+                STIMI YAPMI MAKASSAR · Kode PT 093046
               </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Kode Perguruan Tinggi: 093046 · LLDIKTI Wilayah IX · Kampus Terakreditasi
+              <p className="text-[11px] text-teal-700/80 dark:text-teal-300/80">
+                LLDIKTI Wilayah IX · Repositori Resmi Kredensial & PISN Kemdiktisaintek
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-              <span>Server Hard Disk On-Premise (Port 3022)</span>
-            </div>
+          <div className="flex items-center gap-4 text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse" />
+              <span className="text-teal-900 dark:text-teal-200 font-medium">
+                Server Hard Disk On-Premise (Port 3022)
+              </span>
+            </span>
             <span>·</span>
-            <Link href="/admin" className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">
-              Portal BAAK
+            <Link
+              href="/login"
+              className="text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+            >
+              Portal Staf BAAK
             </Link>
           </div>
         </div>

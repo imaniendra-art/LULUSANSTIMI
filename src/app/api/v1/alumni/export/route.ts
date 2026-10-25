@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const batch = searchParams.get("batch") || "";
     const registrationType = searchParams.get("registrationType") || "";
     const hasPisn = searchParams.get("hasPisn");
+    const hasThesis = searchParams.get("hasThesis");
     const yudisiumDateParam = searchParams.get("yudisiumDate") || "";
     const entryPeriodParam = searchParams.get("entryPeriod") || "";
     const cohortParam = searchParams.get("cohort") || searchParams.get("angkatan") || "";
@@ -56,133 +57,180 @@ export async function GET(request: NextRequest) {
 
     // Jika scope !== "all", terapkan filter aktif
     if (scope !== "all") {
+      if (query) {
+        where.OR = [
+          { nim: { contains: query, mode: "insensitive" } },
+          { fullName: { contains: query, mode: "insensitive" } },
+          { pisnNumber: { contains: query, mode: "insensitive" } },
+          { pisnBatchNumber: { contains: query, mode: "insensitive" } },
+          { yudisiumDecreeNumber: { contains: query, mode: "insensitive" } },
+          { entryPeriod: { contains: query, mode: "insensitive" } },
+          { exitPeriod: { contains: query, mode: "insensitive" } },
+          { thesisTitle: { contains: query, mode: "insensitive" } },
+        ];
+      }
 
-    if (query) {
-      where.OR = [
-        { nim: { contains: query, mode: "insensitive" } },
-        { fullName: { contains: query, mode: "insensitive" } },
-        { pisnNumber: { contains: query, mode: "insensitive" } },
-        { pisnBatchNumber: { contains: query, mode: "insensitive" } },
-        { yudisiumDecreeNumber: { contains: query, mode: "insensitive" } },
-        { entryPeriod: { contains: query, mode: "insensitive" } },
-        { exitPeriod: { contains: query, mode: "insensitive" } },
-        { thesisTitle: { contains: query, mode: "insensitive" } },
-      ];
-    }
+      if (prodi) where.prodiCode = prodi;
+      if (batch) where.pisnBatchNumber = batch;
+      if (registrationType) where.registrationType = registrationType;
 
-    if (prodi) where.prodiCode = prodi;
-    if (batch) where.pisnBatchNumber = batch;
-    if (registrationType) where.registrationType = registrationType;
-    if (year) {
-      const yearNum = parseInt(year, 10);
-      const startOfYear = new Date(`${yearNum}-01-01T00:00:00.000Z`);
-      const endOfYear = new Date(`${yearNum}-12-31T23:59:59.999Z`);
-      const prevYear = yearNum - 1;
+      if (year) {
+        const yearNum = parseInt(year, 10);
+        const startOfYear = new Date(`${yearNum}-01-01T00:00:00.000Z`);
+        const endOfYear = new Date(`${yearNum}-12-31T23:59:59.999Z`);
+        const prevYear = yearNum - 1;
 
-      const yearCondition = {
-        OR: [
-          { graduationYear: yearNum },
-          { yudisiumDate: { gte: startOfYear, lte: endOfYear } },
-          { exitPeriod: { startsWith: `${yearNum}-1` } },
-          { exitPeriod: { startsWith: `${prevYear}-2` } },
-        ],
-      };
-      if (Array.isArray(where.AND)) {
-        where.AND.push(yearCondition);
-      } else if (where.AND) {
-        where.AND = [where.AND, yearCondition];
-      } else {
-        where.AND = [yearCondition];
+        const yearCondition = {
+          OR: [
+            { graduationYear: yearNum },
+            { yudisiumDate: { gte: startOfYear, lte: endOfYear } },
+            { exitPeriod: { startsWith: `${yearNum}-1` } },
+            { exitPeriod: { startsWith: `${prevYear}-2` } },
+          ],
+        };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(yearCondition);
+        } else if (where.AND) {
+          where.AND = [where.AND, yearCondition];
+        } else {
+          where.AND = [yearCondition];
+        }
+      }
+
+      if (entryPeriodParam) where.entryPeriod = entryPeriodParam;
+
+      if (cohortParam) {
+        const cohortYear = parseInt(cohortParam, 10);
+        const condition = {
+          OR: [
+            ...(isNaN(cohortYear) ? [] : [{ cohortYear }]),
+            { entryPeriod: { startsWith: cohortParam } },
+          ],
+        };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
+      }
+
+      if (yudisiumDateParam) {
+        const start = new Date(`${yudisiumDateParam}T00:00:00.000Z`);
+        const end = new Date(`${yudisiumDateParam}T23:59:59.999Z`);
+        const condition = { yudisiumDate: { gte: start, lte: end } };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
+      }
+
+      if (fileStatusParam === "has_both") {
+        const cond = {
+          AND: [
+            { ijazahScan: { isSet: true } },
+            { transkripScan: { isSet: true } },
+          ],
+        };
+        if (Array.isArray(where.AND)) where.AND.push(cond);
+        else if (where.AND) where.AND = [where.AND, cond];
+        else where.AND = [cond];
+      } else if (fileStatusParam === "has_ijazah") {
+        const cond = { ijazahScan: { isSet: true } };
+        if (Array.isArray(where.AND)) where.AND.push(cond);
+        else if (where.AND) where.AND = [where.AND, cond];
+        else where.AND = [cond];
+      } else if (fileStatusParam === "no_ijazah") {
+        const cond = {
+          OR: [
+            { ijazahScan: { isSet: false } },
+            { ijazahScan: { is: null } },
+          ],
+        };
+        if (Array.isArray(where.AND)) where.AND.push(cond);
+        else if (where.AND) where.AND = [where.AND, cond];
+        else where.AND = [cond];
+      } else if (fileStatusParam === "has_transkrip") {
+        const cond = { transkripScan: { isSet: true } };
+        if (Array.isArray(where.AND)) where.AND.push(cond);
+        else if (where.AND) where.AND = [where.AND, cond];
+        else where.AND = [cond];
+      } else if (fileStatusParam === "no_files") {
+        const cond = {
+          AND: [
+            { OR: [{ ijazahScan: { isSet: false } }, { ijazahScan: { is: null } }] },
+            { OR: [{ transkripScan: { isSet: false } }, { transkripScan: { is: null } }] },
+          ],
+        };
+        if (Array.isArray(where.AND)) where.AND.push(cond);
+        else if (where.AND) where.AND = [where.AND, cond];
+        else where.AND = [cond];
+      }
+
+      if (gpaRangeParam === "cumlaude") {
+        where.gpa = { gte: 3.75 };
+      } else if (gpaRangeParam === "sangat_memuaskan") {
+        where.gpa = { gte: 3.5, lt: 3.75 };
+      } else if (gpaRangeParam === "memuaskan") {
+        where.gpa = { lt: 3.5 };
+      }
+
+      if (hasPisn === "true") {
+        const condition = {
+          AND: [
+            { pisnNumber: { isSet: true } },
+            { pisnNumber: { not: null } },
+            { pisnNumber: { not: "" } },
+          ],
+        };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
+      } else if (hasPisn === "false") {
+        const condition = {
+          OR: [
+            { pisnNumber: { isSet: false } },
+            { pisnNumber: null },
+            { pisnNumber: "" },
+          ],
+        };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
+      }
+
+      if (hasThesis === "true") {
+        const condition = { thesisTitle: { not: "" } };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
+      } else if (hasThesis === "false") {
+        const condition = { thesisTitle: "" };
+        if (Array.isArray(where.AND)) {
+          where.AND.push(condition);
+        } else if (where.AND) {
+          where.AND = [where.AND, condition];
+        } else {
+          where.AND = [condition];
+        }
       }
     }
-    if (entryPeriodParam) where.entryPeriod = entryPeriodParam;
-
-    if (cohortParam) {
-      const cohortYear = parseInt(cohortParam, 10);
-      const condition = {
-        OR: [
-          ...(isNaN(cohortYear) ? [] : [{ cohortYear }]),
-          { entryPeriod: { startsWith: cohortParam } },
-        ],
-      };
-      if (Array.isArray(where.AND)) {
-        where.AND.push(condition);
-      } else if (where.AND) {
-        where.AND = [where.AND, condition];
-      } else {
-        where.AND = [condition];
-      }
-    }
-
-    if (yudisiumDateParam) {
-      const start = new Date(`${yudisiumDateParam}T00:00:00.000Z`);
-      const end = new Date(`${yudisiumDateParam}T23:59:59.999Z`);
-      const condition = { yudisiumDate: { gte: start, lte: end } };
-      if (Array.isArray(where.AND)) {
-        where.AND.push(condition);
-      } else if (where.AND) {
-        where.AND = [where.AND, condition];
-      } else {
-        where.AND = [condition];
-      }
-    }
-
-    if (fileStatusParam === "has_both") {
-      where.AND = [
-        { ijazahScan: { isNot: null } },
-        { transkripScan: { isNot: null } },
-      ];
-    } else if (fileStatusParam === "has_ijazah") {
-      where.ijazahScan = { isNot: null };
-    } else if (fileStatusParam === "has_transkrip") {
-      where.transkripScan = { isNot: null };
-    } else if (fileStatusParam === "no_files") {
-      where.AND = [
-        { ijazahScan: { is: null } },
-        { transkripScan: { is: null } },
-      ];
-    }
-
-    if (gpaRangeParam === "cumlaude") {
-      where.gpa = { gte: 3.75 };
-    } else if (gpaRangeParam === "sangat_memuaskan") {
-      where.gpa = { gte: 3.5, lt: 3.75 };
-    } else if (gpaRangeParam === "memuaskan") {
-      where.gpa = { lt: 3.5 };
-    }
-
-    if (hasPisn === "true") {
-      const condition = {
-        AND: [
-          { pisnNumber: { isSet: true } },
-          { pisnNumber: { not: null } },
-          { pisnNumber: { not: "" } },
-        ],
-      };
-      if (Array.isArray(where.AND)) {
-        where.AND.push(condition);
-      } else if (where.AND) {
-        where.AND = [where.AND, condition];
-      } else {
-        where.AND = [condition];
-      }
-    } else if (hasPisn === "false") {
-      const condition = {
-        OR: [
-          { pisnNumber: { isSet: false } },
-          { pisnNumber: null },
-          { pisnNumber: "" },
-        ],
-      };
-      if (Array.isArray(where.AND)) {
-        where.AND.push(condition);
-      } else if (where.AND) {
-        where.AND = [where.AND, condition];
-      } else {
-        where.AND = [condition];
-      }
-    }
-  }
 
     let orderBy: Record<string, "asc" | "desc">[] = [{ nim: "asc" }];
     if (sortBy === "name" || sortBy === "fullName") {
@@ -216,8 +264,12 @@ export async function GET(request: NextRequest) {
 
     let filterTag = "";
     if (!isAll) {
-      if (hasPisn === "false") filterTag = "BELUM PISN";
+      if (hasThesis === "true") filterTag = "SUDAH ADA JUDUL";
+      else if (hasThesis === "false") filterTag = "BELUM ADA JUDUL";
+      else if (hasPisn === "false") filterTag = "BELUM PISN";
       else if (hasPisn === "true") filterTag = "SUDAH PISN";
+      else if (fileStatusParam === "has_ijazah") filterTag = "SUDAH UPLOAD IJAZAH";
+      else if (fileStatusParam === "no_ijazah" || fileStatusParam === "no_files") filterTag = "BELUM UPLOAD IJAZAH";
       else if (yudisiumDateParam) filterTag = `YUDISIUM ${yudisiumDateParam}`;
       else if (cohortParam) filterTag = `ANGKATAN ${cohortParam}`;
       else if (prodi === "61201") filterTag = "S1 MANAJEMEN";
@@ -238,6 +290,7 @@ export async function GET(request: NextRequest) {
         "PROGRAM STUDI": a.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen",
         "JENJANG": a.degree || "S1",
         "JUDUL SKRIPSI / KARYA ILMIAH": a.thesisTitle || "-",
+        "STATUS JUDUL": a.thesisTitle && a.thesisTitle.trim() ? "Lengkap" : "Belum Ada",
         "IPK": a.gpa !== null && a.gpa !== undefined ? a.gpa : "-",
         "PERIODE MASUK": a.entryPeriod || "-",
         "PERIODE KELUAR": a.exitPeriod || "-",
@@ -257,6 +310,7 @@ export async function GET(request: NextRequest) {
         { wch: 16 }, // PRODI
         { wch: 10 }, // JENJANG
         { wch: 55 }, // JUDUL SKRIPSI
+        { wch: 14 }, // STATUS JUDUL
         { wch: 8 },  // IPK
         { wch: 15 }, // MASUK
         { wch: 15 }, // KELUAR
@@ -272,6 +326,60 @@ export async function GET(request: NextRequest) {
       const encodedFilename = encodeURIComponent(filename);
 
       XLSX.utils.book_append_sheet(wb, ws, "ARSIP SKRIPSI STIMI");
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
+        },
+      });
+    }
+
+    if (tab === "berkas") {
+      // Sheet Berkas Ijazah, Transkrip & SK
+      const rows = items.map((a, idx) => ({
+        "NO": idx + 1,
+        "NIM": a.nim,
+        "NAMA MAHASISWA": a.fullName,
+        "PROGRAM STUDI": a.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen",
+        "JENJANG": a.degree || "S1",
+        "TANGGAL YUDISIUM": formatIndoDate(a.yudisiumDate),
+        "NOMOR SK YUDISIUM": a.yudisiumDecreeNumber || "-",
+        "NOMOR PISN": a.pisnNumber || "Belum Terbit",
+        "STATUS SCAN IJAZAH": a.ijazahScan ? "Ada (PDF)" : "Belum Diunggah",
+        "NAMA FILE IJAZAH": a.ijazahScan?.fileName || "-",
+        "STATUS SCAN TRANSKRIP": a.transkripScan ? "Ada (PDF)" : "Belum Diunggah",
+        "NAMA FILE TRANSKRIP": a.transkripScan?.fileName || "-",
+        "TANGGAL UPLOAD BERKAS": a.ijazahScan?.uploadedAt ? formatIndoDate(a.ijazahScan.uploadedAt) : (a.transkripScan?.uploadedAt ? formatIndoDate(a.transkripScan.uploadedAt) : "-"),
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      ws["!cols"] = [
+        { wch: 6 },  // NO
+        { wch: 15 }, // NIM
+        { wch: 32 }, // NAMA
+        { wch: 16 }, // PRODI
+        { wch: 10 }, // JENJANG
+        { wch: 20 }, // TANGGAL YUDISIUM
+        { wch: 35 }, // NO SK
+        { wch: 25 }, // NO PISN
+        { wch: 22 }, // STATUS IJAZAH
+        { wch: 30 }, // NAMA FILE IJAZAH
+        { wch: 24 }, // STATUS TRANSKRIP
+        { wch: 30 }, // NAMA FILE TRANSKRIP
+        { wch: 24 }, // TANGGAL UPLOAD
+      ];
+
+      const filename = isAll
+        ? `ARSIP BERKAS IJAZAH & SK LULUSAN STIMI - SEMUA (${items.length} ALUMNI).xlsx`
+        : `ARSIP BERKAS IJAZAH - ${filterTag} (${items.length} ALUMNI).xlsx`;
+      const encodedFilename = encodeURIComponent(filename);
+
+      XLSX.utils.book_append_sheet(wb, ws, "ARSIP BERKAS IJAZAH");
       const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
       return new NextResponse(buffer, {
@@ -335,11 +443,11 @@ export async function GET(request: NextRequest) {
     ];
 
     const filename = isAll
-      ? `ARSIP IJAZA LULUSAN STIMI - SEMUA (${items.length} ALUMNI).xlsx`
-      : `ARSIP IJAZA - ${filterTag} (${items.length} ALUMNI).xlsx`;
+      ? `ARSIP IJAZAH LULUSAN STIMI - SEMUA (${items.length} ALUMNI).xlsx`
+      : `ARSIP IJAZAH - ${filterTag} (${items.length} ALUMNI).xlsx`;
     const encodedFilename = encodeURIComponent(filename);
 
-    XLSX.utils.book_append_sheet(wb, ws, "ARSIP IJAZA LULUSAN STIMI");
+    XLSX.utils.book_append_sheet(wb, ws, "ARSIP IJAZAH LULUSAN STIMI");
     const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     return new NextResponse(buffer, {

@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         OR: [
           { nim: query },
           { pisnNumber: query },
+          { certificateNumber: query },
         ],
       },
       select: {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (!alumni) {
       return NextResponse.json({
         found: false,
-        message: "Data kelulusan tidak ditemukan dalam basis data resmi STIMI Yapmi.",
+        message: "Data kelulusan tidak ditemukan dalam basis data resmi STIMI YAPMI Makassar.",
       });
     }
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
         institutionCode: "093046",
         statusLegalitas: alumni.pisnNumber
           ? "TERDAFTAR & TERVERIFIKASI PISN KEMENDIKBUDRISTEK"
-          : "TERDAFTAR AKADEMIK STIMI YAPMI",
+          : "TERDAFTAR AKADEMIK STIMI YAPMI MAKASSAR",
       },
     });
   } catch (error) {

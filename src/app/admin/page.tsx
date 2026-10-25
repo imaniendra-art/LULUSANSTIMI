@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { DashboardView } from "@/components/admin/DashboardView";
+import { UploadDecreeModal } from "@/components/admin/UploadDecreeModal";
+import { SiamApiModal } from "@/components/admin/SiamApiModal";
 import {
+  LayoutDashboard,
+  UploadCloud,
   Search,
   Plus,
   FileSpreadsheet,
@@ -21,6 +26,7 @@ import {
   GraduationCap,
   RefreshCw,
   Layers,
+  Sparkles,
   ClipboardPaste,
   LogOut,
   ShieldCheck,
@@ -39,6 +45,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 
 interface StoredFile {
@@ -64,6 +71,7 @@ interface AlumniRecord {
     | "KONVERSI_TRANSFER_NILAI";
   entryPeriod?: string;
   exitPeriod?: string;
+  cohortYear?: number | null;
   graduationYear: number;
   yudisiumDate: string;
   yudisiumDecreeNumber?: string;
@@ -91,6 +99,11 @@ interface StatsData {
   yudisiumSkMap?: Record<string, string>;
   cohorts?: string[];
   cohortCounts?: Record<string, number>;
+  cohortPisnStats?: Record<string, { total: number; withPisn: number; withoutPisn: number }>;
+  cohortThesisStats?: Record<string, { total: number; withThesis: number; withoutThesis: number }>;
+  cohortFileStats?: Record<string, { total: number; withIjazah: number; withoutIjazah: number }>;
+  thesisStats?: { total: number; withThesis: number; withoutThesis: number };
+  fileStats?: { total: number; withIjazah: number; withoutIjazah: number; withTranskrip: number; withoutTranskrip: number };
   graduationYears?: string[];
   graduationYearCounts?: Record<string, number>;
   entryPeriods?: string[];
@@ -202,7 +215,15 @@ function FilterDropdown<T extends string = string>({
   );
 }
 
-export default function AdminConsolePage() {
+function AdminConsoleContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const filterParam = searchParams.get("filter");
+
+  const mainTab: "dashboard" | "repo" =
+    tabParam === "repo" || tabParam === "pisn" || tabParam === "skripsi" || tabParam === "berkas"
+      ? "repo"
+      : "dashboard";
   const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<{ email: string; fullName: string; role: string } | null>(null);
@@ -216,6 +237,7 @@ export default function AdminConsolePage() {
   const [regTypeFilter, setRegTypeFilter] = useState("");
   const [batchFilter, setBatchFilter] = useState("");
   const [pisnFilter, setPisnFilter] = useState("");
+  const [thesisFilter, setThesisFilter] = useState<"" | "true" | "false">("");
   const [cohortFilter, setCohortFilter] = useState("");
   const [yudisiumFilter, setYudisiumFilter] = useState("");
   const [graduationYearFilter, setGraduationYearFilter] = useState("");
@@ -226,8 +248,36 @@ export default function AdminConsolePage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [copiedPisn, setCopiedPisn] = useState<string | null>(null);
 
-  // Tab Mode (PISN Table vs Judul Skripsi Table)
-  const [activeTableTab, setActiveTableTab] = useState<"pisn" | "skripsi">("pisn");
+  // Tab Mode: Menu PISN vs IPK & Judul Skripsi vs Ijazah & SK Yudisium
+  const [activeTableTab, setActiveTableTab] = useState<"pisn" | "skripsi" | "berkas">("pisn");
+  const [uploadedDecrees, setUploadedDecrees] = useState<Record<string, { fileName: string; size: number }>>({});
+  const [isUploadDecreeModalOpen, setIsUploadDecreeModalOpen] = useState(false);
+  const [selectedDecreeForUpload, setSelectedDecreeForUpload] = useState("");
+  const [selectedYudisiumDateForUpload, setSelectedYudisiumDateForUpload] = useState("");
+  const [cascadeConfirmData, setCascadeConfirmData] = useState<{
+    isOpen: boolean;
+    alumniId: string;
+    nim: string;
+    fullName: string;
+    yudisiumDateStr: string;
+    decreeNumber: string;
+    sameDateCount: number;
+  } | null>(null);
+
+  const fetchDecrees = async () => {
+    try {
+      const res = await fetch("/api/v1/yudisium-decree");
+      const json = await res.json();
+      if (json.success && json.decrees) {
+        setUploadedDecrees(json.decrees);
+      }
+    } catch (e) {
+      console.error("Fetch decrees status error:", e);
+    }
+  };
+
+  const getSafeKey = (sk?: string) => (sk || "").replace(/[/\\?%*:|"<>]/g, "_").trim();
+
   const [editingThesisId, setEditingThesisId] = useState<string | null>(null);
   const [editingThesisTitle, setEditingThesisTitle] = useState<string>("");
   const [isSavingThesis, setIsSavingThesis] = useState<boolean>(false);
@@ -268,6 +318,7 @@ export default function AdminConsolePage() {
     prodiFilter ||
     regTypeFilter ||
     pisnFilter ||
+    thesisFilter ||
     cohortFilter ||
     yudisiumFilter ||
     graduationYearFilter ||
@@ -339,7 +390,7 @@ export default function AdminConsolePage() {
 
   const graduationYearOptions = useMemo(
     () => [
-      { value: "", label: "Semua Thn Keluar" },
+      { value: "", label: "Semua Tahun Keluar" },
       ...(stats?.graduationYears?.map((y) => ({
         value: y,
         label: `Tahun ${y}${stats?.graduationYearCounts?.[y] ? ` (${stats.graduationYearCounts[y]})` : ""}`,
@@ -375,26 +426,78 @@ export default function AdminConsolePage() {
       { value: "name-desc", label: "Urut: Nama (Z → A)" },
       { value: "yudisiumDate-desc", label: "Urut: Yudisium (Terbaru)" },
       { value: "yudisiumDate-asc", label: "Urut: Yudisium (Terlama)" },
-      { value: "graduationYear-desc", label: "Urut: Thn Keluar (Terbaru)" },
-      { value: "graduationYear-asc", label: "Urut: Thn Keluar (Terlama)" },
+      { value: "graduationYear-desc", label: "Urut: Tahun Keluar (Terbaru)" },
+      { value: "graduationYear-asc", label: "Urut: Tahun Keluar (Terlama)" },
       { value: "gpa-desc", label: "Urut: IPK (Tertinggi)" },
       { value: "gpa-asc", label: "Urut: IPK (Terendah)" },
-      { value: "entryPeriod-desc", label: "Urut: Masuk (Terbaru)" },
+      { value: "entryPeriod-desc", label: "Urut: Periode Masuk (Terbaru)" },
       { value: "pisnNumber-desc", label: "Urut: PISN Dahulu" },
     ],
     []
   );
 
+  const [isSiamModalOpen, setIsSiamModalOpen] = useState(false);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const tab = new URLSearchParams(window.location.search).get("tab");
-      if (tab === "skripsi") {
+    fetchDecrees();
+  }, []);
+
+  useEffect(() => {
+    if (tabParam === "skripsi" || filterParam === "skripsi") {
+      setActiveTableTab("skripsi");
+      setPisnFilter("");
+      setFileStatusFilter("");
+    } else if (tabParam === "berkas") {
+      setActiveTableTab("berkas");
+      setPisnFilter("");
+      setThesisFilter("");
+    } else if (tabParam === "pisn" || (tabParam === "repo" && filterParam !== "skripsi")) {
+      setActiveTableTab("pisn");
+      setThesisFilter("");
+      setFileStatusFilter("");
+    }
+  }, [tabParam, filterParam]);
+
+  const handleSwitchTab = (
+    tab: "dashboard" | "repo" | "import" | "pisn" | "skripsi" | "berkas",
+    tableTab?: "pisn" | "skripsi" | "berkas"
+  ) => {
+    if (tab === "dashboard") {
+      router.push("/admin");
+    } else if (tab === "pisn") {
+      setActiveTableTab("pisn");
+      setThesisFilter("");
+      setFileStatusFilter("");
+      router.push("/admin?tab=pisn");
+    } else if (tab === "skripsi") {
+      setActiveTableTab("skripsi");
+      setPisnFilter("");
+      setFileStatusFilter("");
+      router.push("/admin?tab=skripsi");
+    } else if (tab === "berkas") {
+      setActiveTableTab("berkas");
+      setPisnFilter("");
+      setThesisFilter("");
+      router.push("/admin?tab=berkas");
+    } else {
+      if (tableTab === "skripsi") {
         setActiveTableTab("skripsi");
-      } else if (tab === "pisn") {
+        setPisnFilter("");
+        setFileStatusFilter("");
+        router.push("/admin?tab=skripsi");
+      } else if (tableTab === "berkas") {
+        setActiveTableTab("berkas");
+        setPisnFilter("");
+        setThesisFilter("");
+        router.push("/admin?tab=berkas");
+      } else {
         setActiveTableTab("pisn");
+        setThesisFilter("");
+        setFileStatusFilter("");
+        router.push("/admin?tab=pisn");
       }
     }
-  }, []);
+  };
 
   // Modals state
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
@@ -419,8 +522,9 @@ export default function AdminConsolePage() {
       | "KONVERSI_TRANSFER_NILAI",
     entryPeriod: "2022-1",
     exitPeriod: "2025-2",
+    cohortYear: 2022,
     yudisiumDate: new Date().toISOString().split("T")[0],
-    yudisiumDecreeNumber: "000.2/493/STIMI-YAPMI/MKS/IX/2026",
+    yudisiumDecreeNumber: "",
     thesisTitle: "",
     pisnNumber: "",
     pisnBatchNumber: "",
@@ -472,9 +576,10 @@ export default function AdminConsolePage() {
       });
   }, [router]);
 
-  // Fetch Data & Stats
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch Data & Stats (supports silent background re-fetch without table flicker)
+  const fetchData = useCallback(async (opts?: boolean | { silent?: boolean } | unknown) => {
+    const silent = opts === true || (typeof opts === "object" && opts !== null && "silent" in opts && Boolean((opts as { silent?: boolean }).silent));
+    if (!silent) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.set("q", searchQuery);
@@ -482,6 +587,7 @@ export default function AdminConsolePage() {
       if (regTypeFilter) params.set("registrationType", regTypeFilter);
       if (batchFilter) params.set("batch", batchFilter);
       if (pisnFilter) params.set("hasPisn", pisnFilter);
+      if (thesisFilter) params.set("hasThesis", thesisFilter);
       if (cohortFilter) params.set("cohort", cohortFilter);
       if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
       if (graduationYearFilter) params.set("year", graduationYearFilter);
@@ -513,7 +619,7 @@ export default function AdminConsolePage() {
     } catch (err) {
       console.error("Fetch data error:", err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [
     searchQuery,
@@ -521,6 +627,7 @@ export default function AdminConsolePage() {
     regTypeFilter,
     batchFilter,
     pisnFilter,
+    thesisFilter,
     cohortFilter,
     yudisiumFilter,
     graduationYearFilter,
@@ -542,6 +649,7 @@ export default function AdminConsolePage() {
     regTypeFilter,
     batchFilter,
     pisnFilter,
+    thesisFilter,
     cohortFilter,
     yudisiumFilter,
     graduationYearFilter,
@@ -595,13 +703,8 @@ export default function AdminConsolePage() {
     setTimeout(() => setCopiedPisn(null), 2000);
   };
 
-  const getOfficialSkFromDate = (dateStr: string): string => {
-    if (dateStr === "2026-07-31") return "000.2/342/STIMI-YAPMI/MKS/VII/2026";
-    if (dateStr === "2026-08-08") return "000.2/443/STIMI-YAPMI/MKS/VIII/2026";
-    if (dateStr === "2026-09-04") return "000.2/493/STIMI-YAPMI/MKS/IX/2026";
-    if (dateStr === "2026-09-17") return "000.2/511/STIMI-YAPMI/MKS/IX/2026";
-    if (dateStr === "2026-09-18") return "000.2/512/STIMI-YAPMI/MKS/IX/2026";
-    return "000.2/512/STIMI-YAPMI/MKS/IX/2026";
+  const getOfficialSkFromDate = (_dateStr: string): string => {
+    return "";
   };
 
   // Thesis Inline Editing Handlers
@@ -651,6 +754,7 @@ export default function AdminConsolePage() {
       if (regTypeFilter) params.set("registrationType", regTypeFilter);
       if (batchFilter) params.set("batch", batchFilter);
       if (pisnFilter) params.set("hasPisn", pisnFilter);
+      if (thesisFilter) params.set("hasThesis", thesisFilter);
       if (cohortFilter) params.set("cohort", cohortFilter);
       if (yudisiumFilter) params.set("yudisiumDate", yudisiumFilter);
       if (graduationYearFilter) params.set("year", graduationYearFilter);
@@ -679,8 +783,9 @@ export default function AdminConsolePage() {
       registrationType: "PESERTA_DIDIK_BARU",
       entryPeriod: "2022-1",
       exitPeriod: "2025-2",
+      cohortYear: 2022,
       yudisiumDate: defaultDate,
-      yudisiumDecreeNumber: getOfficialSkFromDate(defaultDate),
+      yudisiumDecreeNumber: "",
       thesisTitle: "",
       pisnNumber: "",
       pisnBatchNumber: "",
@@ -709,6 +814,7 @@ export default function AdminConsolePage() {
       registrationType: alumni.registrationType || "PESERTA_DIDIK_BARU",
       entryPeriod: alumni.entryPeriod || "2022-1",
       exitPeriod: alumni.exitPeriod || "2025-2",
+      cohortYear: alumni.cohortYear || (alumni.entryPeriod ? parseInt(alumni.entryPeriod.slice(0, 4), 10) : (alumni.nim.startsWith("221") ? 2021 : (parseInt(alumni.nim.slice(0, 2), 10) ? 2000 + parseInt(alumni.nim.slice(0, 2), 10) : 2022))),
       yudisiumDate: alumni.yudisiumDate ? alumni.yudisiumDate.split("T")[0] : "",
       yudisiumDecreeNumber: alumni.yudisiumDecreeNumber || "",
       thesisTitle: alumni.thesisTitle || "",
@@ -740,6 +846,38 @@ export default function AdminConsolePage() {
       return;
     }
 
+    if (formData.pisnNumber && formData.pisnNumber.trim().length > 0 && formData.pisnNumber.trim().length !== 21) {
+      setFormError(`Nomor PISN Belmawa harus tepat 21 digit (saat ini ${formData.pisnNumber.trim().length} digit). Kosongkan jika belum diterbitkan oleh Belmawa.`);
+      return;
+    }
+
+    const isEdit = Boolean(formData.id);
+    const dateKey = formData.yudisiumDate;
+    const sameDateCount = stats?.yudisiumCounts?.[dateKey] || 0;
+    const skChanged = (formData.yudisiumDecreeNumber || "").trim() !== (selectedGraduate?.yudisiumDecreeNumber || "").trim();
+
+    if (isEdit && skChanged && sameDateCount > 1) {
+      setCascadeConfirmData({
+        isOpen: true,
+        alumniId: formData.id,
+        nim: formData.nim,
+        fullName: formData.fullName,
+        yudisiumDateStr: formData.yudisiumDate,
+        decreeNumber: (formData.yudisiumDecreeNumber || "").trim(),
+        sameDateCount,
+      });
+      return;
+    }
+
+    await doSubmitForm(false);
+  };
+
+  const handleExecuteSaveWithCascade = async (cascadeToAll: boolean) => {
+    setCascadeConfirmData(null);
+    await doSubmitForm(cascadeToAll);
+  };
+
+  const doSubmitForm = async (cascadeSameDate: boolean) => {
     setIsSubmitting(true);
     setFormError("");
 
@@ -750,23 +888,26 @@ export default function AdminConsolePage() {
       data.append("prodiCode", formData.prodiCode);
       data.append("prodiName", formData.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen");
       data.append("registrationType", formData.registrationType);
+      if (formData.cohortYear) data.append("cohortYear", String(formData.cohortYear));
       data.append("entryPeriod", formData.entryPeriod);
       data.append("exitPeriod", formData.exitPeriod);
       data.append("yudisiumDate", formData.yudisiumDate);
       data.append("yudisiumDecreeNumber", formData.yudisiumDecreeNumber);
-      data.append("thesisTitle", formData.thesisTitle || "Telah memenuhi syarat kelulusan");
+      data.append("thesisTitle", formData.thesisTitle || "");
       data.append("pisnNumber", formData.pisnNumber);
       data.append("pisnBatchNumber", formData.pisnBatchNumber);
       data.append("certificateNumber", formData.certificateNumber);
       if (formData.gpa) data.append("gpa", formData.gpa);
       if (formData.phoneNumber) data.append("phoneNumber", formData.phoneNumber);
       if (formData.personalEmail) data.append("personalEmail", formData.personalEmail);
+      if (cascadeSameDate) data.append("cascadeSameDate", "true");
 
       if (ijazahFile) data.append("ijazahFile", ijazahFile);
       if (transkripFile) data.append("transkripFile", transkripFile);
 
-      const url = formData.id ? `/api/v1/alumni/${formData.id}` : "/api/v1/alumni";
-      const method = formData.id ? "PUT" : "POST";
+      const isEdit = Boolean(formData.id);
+      const url = isEdit ? `/api/v1/alumni/${formData.id}` : "/api/v1/alumni";
+      const method = isEdit ? "PUT" : "POST";
 
       const res = await fetch(url, { method, body: data });
       const json = await res.json();
@@ -775,8 +916,30 @@ export default function AdminConsolePage() {
         throw new Error(json.error || "Gagal menyimpan data lulusan");
       }
 
+      // Optimistic Instant Update to Local State
+      if (isEdit && json.data) {
+        setGraduates((prev) =>
+          prev.map((g) => {
+            if (g.id === json.data.id || g.nim === json.data.nim) {
+              return { ...g, ...json.data };
+            }
+            if (cascadeSameDate && g.yudisiumDate?.split("T")[0] === formData.yudisiumDate) {
+              return { ...g, yudisiumDecreeNumber: formData.yudisiumDecreeNumber || null };
+            }
+            return g;
+          })
+        );
+      } else if (!isEdit && json.data) {
+        setGraduates((prev) => [json.data, ...prev]);
+        setTotalRecords((prev) => prev + 1);
+      }
+
+      // Close modal immediately so user doesn't wait
       setIsAddEditOpen(false);
-      fetchData();
+
+      // Re-fetch quietly in the background without screen flickering or blocking spinner
+      fetchData(true);
+      fetchDecrees();
     } catch (err: unknown) {
       setFormError((err as Error).message || "Terjadi kesalahan saat menyimpan");
     } finally {
@@ -791,7 +954,10 @@ export default function AdminConsolePage() {
     try {
       const res = await fetch(`/api/v1/alumni/${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchData();
+        // Optimistic delete
+        setGraduates((prev) => prev.filter((g) => g.id !== id && g.nim !== nim));
+        setTotalRecords((prev) => Math.max(0, prev - 1));
+        fetchData(true);
       } else {
         const json = await res.json();
         alert(json.error || "Gagal menghapus data");
@@ -905,52 +1071,55 @@ export default function AdminConsolePage() {
   }
 
   return (
-    <div className="space-y-5 font-sans w-full">
+    <div className="space-y-6 font-sans w-full">
+
+
+
       {/* ==================================================================== */}
-      {/* 1. TOPBAR CONSOLE BANNER                                             */}
+      {/* 3. CONDITIONAL TAB VIEWS                                             */}
       {/* ==================================================================== */}
-      <div className="rounded-2xl p-4 sm:p-5 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 backdrop-blur-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
-            <GraduationCap className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Konsol Repositori PISN & Kredensial
-              </h1>
-              <span className="text-[10px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full">
-                Sesi Aktif
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              STIMI Yapmi Makassar · Prodi: S1 Manajemen & S2 Manajemen · Penyimpanan Server On-Premise
-            </p>
-          </div>
-        </div>
+      {mainTab === "dashboard" && (
+        <DashboardView
+          stats={stats}
+          currentUser={currentUser}
+          onSwitchTab={handleSwitchTab}
+          onOpenAdd={handleOpenAdd}
+          onFilterYudisium={(d) => {
+            setYudisiumFilter(d);
+            handleSwitchTab("berkas");
+          }}
+          onFilterCohort={(cohort) => {
+            setCohortFilter(cohort);
+            handleSwitchTab("berkas");
+          }}
+          onFilterExitPeriod={(period) => {
+            setEntryPeriodFilter("");
+            setSearchQuery(period);
+            handleSwitchTab("berkas");
+          }}
+          onFilterPisnStatus={(hasPisn) => {
+            setPisnFilter(hasPisn);
+            handleSwitchTab("pisn");
+          }}
+          onFilterGpaRange={(range) => {
+            setGpaRangeFilter(range);
+            handleSwitchTab("berkas");
+          }}
+          onFilterFileStatus={(status) => {
+            setFileStatusFilter(status);
+            handleSwitchTab("berkas");
+          }}
+          onOpenSiamModal={() => setIsSiamModalOpen(true)}
+          onRefreshData={fetchData}
+        />
+      )}
 
-        {/* User Session Profile & Logout */}
-        <div className="flex items-center gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200 dark:border-white/10">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{currentUser?.fullName}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{currentUser?.email}</p>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            title="Keluar dari sesi BAAK"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-xs font-semibold transition"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Keluar</span>
-          </button>
-        </div>
-      </div>
-
+      {mainTab === "repo" && (
+        <div className="space-y-5">
       {/* ==================================================================== */}
       {/* 2. STATS OVERVIEW CARDS                                              */}
       {/* ==================================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
         {/* Total Lulusan */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs flex items-center justify-between transition hover:border-slate-300 dark:hover:border-white/20">
           <div>
@@ -971,7 +1140,7 @@ export default function AdminConsolePage() {
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs flex items-center justify-between transition hover:border-emerald-200 dark:hover:border-emerald-500/20">
           <div className="flex-1 mr-3">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold tracking-wide text-slate-500 dark:text-slate-400">PISN Kemdikbud</p>
+              <p className="text-[11px] font-semibold tracking-wide text-slate-500 dark:text-slate-400">PISN Kemdiktisaintek</p>
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                 {stats?.totalGraduates ? Math.round(((stats?.withPisn || 0) / stats.totalGraduates) * 100) : 0}%
               </span>
@@ -990,6 +1159,37 @@ export default function AdminConsolePage() {
           </div>
           <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs flex-shrink-0">
             <ShieldCheck className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* Belum Terbit PIN / PISN (BARU) */}
+        <div
+          onClick={() => setPisnFilter("no_pisn")}
+          className="p-4 rounded-2xl bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs flex items-center justify-between transition hover:border-amber-300 dark:hover:border-amber-500/30 cursor-pointer group"
+          title="Klik untuk menyaring mahasiswa yang belum memiliki nomor PIN"
+        >
+          <div className="flex-1 mr-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold tracking-wide text-slate-500 dark:text-slate-400">Belum Ada PIN</p>
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-mono">
+                {stats?.totalGraduates ? Math.round(((stats?.withoutPisn ?? 0) / stats.totalGraduates) * 100) : 0}%
+              </span>
+            </div>
+            <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-1">
+              {stats?.withoutPisn ?? 0}
+            </h3>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1.5">
+              <div
+                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${stats?.totalGraduates ? Math.round(((stats?.withoutPisn ?? 0) / stats.totalGraduates) * 100) : 0}%`,
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80 mt-1 font-medium">Perlu diajukan ke PISN</p>
+          </div>
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs flex-shrink-0 group-hover:scale-105 transition">
+            <AlertCircle className="h-5 w-5" />
           </div>
         </div>
 
@@ -1025,7 +1225,7 @@ export default function AdminConsolePage() {
       {/* ==================================================================== */}
       {/* 3. TOOLBAR ACTIONS & LIVE FILTERS                                    */}
       {/* ==================================================================== */}
-      <div className="relative z-30 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs space-y-3">
+      <div className="sticky top-[88px] sm:top-[92px] z-30 p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#071719]/95 border border-teal-200/80 dark:border-teal-500/30 backdrop-blur-xl shadow-md space-y-3">
         {/* Row 1: Search & Primary Actions */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
           {/* Search Input */}
@@ -1058,22 +1258,6 @@ export default function AdminConsolePage() {
             >
               <Plus className="h-4 w-4" />
               <span>Tambah Lulusan</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setImportResult(null);
-                setRawTextPaste("");
-                setImportFile(null);
-                setImportMode("file");
-                setIsImportOpen(true);
-              }}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 font-semibold text-xs transition cursor-pointer"
-              title="Impor data lulusan dari Excel (.xlsx) atau teks Belmawa"
-            >
-              <ClipboardPaste className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Impor Data / PISN</span>
             </button>
 
             {/* Smart Contextual Export Button */}
@@ -1124,7 +1308,7 @@ export default function AdminConsolePage() {
 
             <button
               type="button"
-              onClick={fetchData}
+              onClick={() => fetchData()}
               title="Perbarui Data"
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition cursor-pointer"
             >
@@ -1157,52 +1341,185 @@ export default function AdminConsolePage() {
               title="Saring berdasarkan tanggal yudisium & SK kelulusan"
             />
 
-            {/* 3. Status PISN Quick Toggle with Badges */}
-            <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setPisnFilter("")}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === ""
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Semua PISN ({stats?.totalGraduates || 187})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPisnFilter("false")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === "false"
-                    ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
-                }`}
-                title="Hanya mahasiswa yang belum memiliki nomor PISN"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
-                <span>Belum PISN</span>
-                <span className="text-[10px] px-1 py-0.2 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono font-bold">
-                  {stats?.withoutPisn ?? 100}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPisnFilter("true")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                  pisnFilter === "true"
-                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
-                }`}
-                title="Hanya mahasiswa yang sudah memiliki nomor PISN resmi"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Sudah PISN</span>
-                <span className="text-[10px] px-1 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
-                  {stats?.withPisn ?? 87}
-                </span>
-              </button>
-            </div>
+            {/* 3. Status Quick Toggle with Badges (Dinamis Sesuai Menu Tab & Angkatan yang Dipilih) */}
+            {activeTableTab === "skripsi" ? (
+              (() => {
+                const activeCounts = cohortFilter && stats?.cohortThesisStats?.[cohortFilter]
+                  ? stats.cohortThesisStats[cohortFilter]
+                  : {
+                      total: stats?.thesisStats?.total ?? (stats?.totalGraduates ?? 0),
+                      withThesis: stats?.thesisStats?.withThesis ?? 0,
+                      withoutThesis: stats?.thesisStats?.withoutThesis ?? 0,
+                    };
+
+                return (
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setThesisFilter("")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        thesisFilter === ""
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title={cohortFilter ? `Semua judul lulusan Angkatan ${cohortFilter}` : "Semua judul skripsi & tesis"}
+                    >
+                      Semua Judul ({activeCounts.total})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setThesisFilter("false")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        thesisFilter === "false"
+                          ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang belum ada judul skripsi` : "Hanya mahasiswa yang belum memiliki judul skripsi"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                      <span>Belum Ada Judul</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono font-bold">
+                        {activeCounts.withoutThesis}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setThesisFilter("true")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        thesisFilter === "true"
+                          ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang sudah ada judul skripsi` : "Hanya mahasiswa yang sudah memiliki judul skripsi"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      <span>Sudah Ada Judul</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                        {activeCounts.withThesis}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()
+            ) : activeTableTab === "berkas" ? (
+              (() => {
+                const activeCounts = cohortFilter && stats?.cohortFileStats?.[cohortFilter]
+                  ? stats.cohortFileStats[cohortFilter]
+                  : {
+                      total: stats?.fileStats?.total ?? (stats?.totalGraduates ?? 0),
+                      withIjazah: stats?.fileStats?.withIjazah ?? (stats?.withIjazah ?? 0),
+                      withoutIjazah: stats?.fileStats?.withoutIjazah ?? ((stats?.totalGraduates ?? 0) - (stats?.withIjazah ?? 0)),
+                    };
+
+                return (
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setFileStatusFilter("")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        fileStatusFilter === ""
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title={cohortFilter ? `Semua berkas lulusan Angkatan ${cohortFilter}` : "Semua arsip berkas ijazah"}
+                    >
+                      Semua Berkas ({activeCounts.total})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFileStatusFilter("no_ijazah")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        fileStatusFilter === "no_ijazah"
+                          ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang belum upload ijazah` : "Hanya mahasiswa yang belum upload ijazah"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                      <span>Belum Upload Ijazah</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono font-bold">
+                        {activeCounts.withoutIjazah}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFileStatusFilter("has_ijazah")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        fileStatusFilter === "has_ijazah"
+                          ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang sudah upload ijazah` : "Hanya mahasiswa yang sudah upload ijazah"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      <span>Sudah Upload Ijazah</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                        {activeCounts.withIjazah}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()
+            ) : (
+              (() => {
+                const activeCounts = cohortFilter && stats?.cohortPisnStats?.[cohortFilter]
+                  ? stats.cohortPisnStats[cohortFilter]
+                  : {
+                      total: stats?.totalGraduates ?? 0,
+                      withPisn: stats?.withPisn ?? 0,
+                      withoutPisn: stats?.withoutPisn ?? 0,
+                    };
+
+                return (
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/70 border border-slate-200/80 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setPisnFilter("")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        pisnFilter === ""
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title={cohortFilter ? `Semua lulusan Angkatan ${cohortFilter}` : "Semua lulusan"}
+                    >
+                      Semua PISN ({activeCounts.total})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPisnFilter("false")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        pisnFilter === "false"
+                          ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang belum memiliki PISN` : "Hanya mahasiswa yang belum memiliki nomor PISN"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                      <span>Belum PISN</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono font-bold">
+                        {activeCounts.withoutPisn}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPisnFilter("true")}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        pisnFilter === "true"
+                          ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                      }`}
+                      title={cohortFilter ? `Lulusan Angkatan ${cohortFilter} yang sudah memiliki PISN` : "Hanya mahasiswa yang sudah memiliki nomor PISN resmi"}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      <span>Sudah PISN</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                        {activeCounts.withPisn}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()
+            )}
 
             {/* 4. Filter Program Studi */}
             <FilterDropdown
@@ -1229,7 +1546,7 @@ export default function AdminConsolePage() {
               value={graduationYearFilter}
               onChange={setGraduationYearFilter}
               options={graduationYearOptions}
-              placeholder="Semua Thn Keluar"
+              placeholder="Semua Tahun Keluar"
               panelWidth="min-w-[170px]"
               title="Saring berdasarkan tahun kalender kelulusan (contoh: 2026)"
             />
@@ -1387,7 +1704,7 @@ export default function AdminConsolePage() {
             />
 
             {/* Reset All Filters Button */}
-            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || cohortFilter || yudisiumFilter || graduationYearFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
+            {(searchQuery || prodiFilter || regTypeFilter || pisnFilter || thesisFilter || cohortFilter || yudisiumFilter || graduationYearFilter || activeAdvancedFiltersCount > 0 || sortBy !== "nim" || sortOrder !== "asc") && (
               <button
                 type="button"
                 onClick={() => {
@@ -1395,6 +1712,7 @@ export default function AdminConsolePage() {
                   setProdiFilter("");
                   setRegTypeFilter("");
                   setPisnFilter("");
+                  setThesisFilter("");
                   setCohortFilter("");
                   setYudisiumFilter("");
                   setGraduationYearFilter("");
@@ -1416,51 +1734,7 @@ export default function AdminConsolePage() {
         </div>
       </div>
 
-      {/* ==================================================================== */}
-      {/* 4. TABLE VIEW SELECTOR & REPOSITORY DATA TABLES                      */}
-      {/* ==================================================================== */}
-      {/* Table Mode Selector (Tab PISN vs Tab Judul Skripsi) */}
-      <div className="relative z-10 flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2.5 flex-wrap gap-2">
-        <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-white/5">
-          <button
-            type="button"
-            onClick={() => setActiveTableTab("pisn")}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeTableTab === "pisn"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span>Repositori PISN & Ijazah</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeTableTab === "pisn" ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold" : "bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-semibold"}`}>
-              {graduates.length}
-            </span>
-          </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTableTab("skripsi")}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeTableTab === "skripsi"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <GraduationCap className="h-3.5 w-3.5" />
-            <span>Judul Skripsi & Tesis</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeTableTab === "skripsi" ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold" : "bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-semibold"}`}>
-              {graduates.length}
-            </span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="text-[11px]">
-            Menampilkan <strong className="text-slate-900 dark:text-white font-mono">{graduates.length}</strong> data lulusan
-          </span>
-        </div>
-      </div>
 
       <div className="relative z-0 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 backdrop-blur-xl shadow-xs overflow-hidden w-full">
         <div className="overflow-x-auto w-full scrollbar-thin">
@@ -1480,7 +1754,7 @@ export default function AdminConsolePage() {
                 <col className="w-[5%]" />    {/* 9. Aksi */}
               </colgroup>
 
-              <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
+              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-sm text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08] shadow-2xs">
                 <tr>
                   <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
                   <th className="py-3 px-3 font-semibold">
@@ -1531,9 +1805,9 @@ export default function AdminConsolePage() {
                       className={`inline-flex items-center gap-1 group transition cursor-pointer ${
                         sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                       }`}
-                      title="Periode Masuk Mahasiswa"
+                      title="Periode Masuk Mahasiswa (Semester Masuk)"
                     >
-                      <span>Masuk</span>
+                      <span>Periode Masuk</span>
                       {renderSortIcon("entryPeriod")}
                     </button>
                   </th>
@@ -1544,9 +1818,9 @@ export default function AdminConsolePage() {
                       className={`inline-flex items-center gap-1 group transition cursor-pointer ${
                         sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                       }`}
-                      title="Periode Keluar / Lulus"
+                      title="Periode Keluar / Semester Kelulusan"
                     >
-                      <span>P. Keluar</span>
+                      <span>Periode Keluar</span>
                       {renderSortIcon("exitPeriod")}
                     </button>
                   </th>
@@ -1559,7 +1833,7 @@ export default function AdminConsolePage() {
                       }`}
                       title="Tahun Keluar Kalender"
                     >
-                      <span>Thn Keluar</span>
+                      <span>Tahun Keluar</span>
                       {renderSortIcon("graduationYear")}
                     </button>
                   </th>
@@ -1582,14 +1856,14 @@ export default function AdminConsolePage() {
               <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                 {isLoading && graduates.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={12} className="py-12 text-center text-slate-500 dark:text-slate-400">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
                       <p className="text-xs">Memuat repositori judul skripsi...</p>
                     </td>
                   </tr>
                 ) : graduates.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={12} className="py-12 text-center text-slate-500 dark:text-slate-400">
                       <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
                       <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci atau filter di atas.</p>
@@ -1777,23 +2051,289 @@ export default function AdminConsolePage() {
                 )}
               </tbody>
             </table>
-          ) : (
-            /* TABEL REPOSITORI PISN & STATUS IJAZAH (PROPORSIONAL, RAPI & BEBAS GAP JARANG) */
+          ) : activeTableTab === "berkas" ? (
+            /* TABEL KHUSUS IJAZAH & SK YUDISIUM (TERHUBUNG LANGSUNG DENGAN FILE PDF SK KETUA PER MAHASISWA) */
             <table className="w-full table-fixed min-w-[1150px] text-left text-slate-700 dark:text-slate-300">
               <colgroup>
                 <col className="w-[3.5%]" />  {/* 0. No */}
-                <col className="w-[19%]" />   {/* 1. Mahasiswa */}
-                <col className="w-[13%]" />   {/* 2. Prodi & Jalur */}
-                <col className="w-[5.5%]" />  {/* 3. Masuk */}
-                <col className="w-[6%]" />    {/* 4. Periode Keluar */}
-                <col className="w-[6%]" />    {/* 5. Tahun Keluar */}
-                <col className="w-[17%]" />   {/* 6. Kelulusan & SK */}
-                <col className="w-[18%]" />   {/* 7. PISN & Batch */}
-                <col className="w-[5.5%]" />  {/* 8. Berkas */}
-                <col className="w-[6.5%]" />  {/* 9. Aksi */}
+                <col className="w-[18%]" />   {/* 1. Mahasiswa */}
+                <col className="w-[10%]" />   {/* 2. Prodi */}
+                <col className="w-[11%]" />   {/* 3. Tgl Yudisium */}
+                <col className="w-[18%]" />   {/* 4. Nomor SK Yudisium */}
+                <col className="w-[16%]" />   {/* 5. File PDF SK Yudisium */}
+                <col className="w-[11%]" />   {/* 6. Scan Ijazah & Transkrip */}
+                <col className="w-[12.5%]" /> {/* 7. Aksi */}
               </colgroup>
 
-              <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08]">
+              <thead className="bg-teal-50/70 dark:bg-teal-950/60 text-[10px] sm:text-[11px] uppercase tracking-wider text-teal-800/70 dark:text-teal-300/70 border-b border-teal-200/80 dark:border-teal-500/20">
+                <tr>
+                  <th className="py-3 px-2 font-semibold text-center text-teal-700/60">No</th>
+                  <th className="py-3 px-3 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("name")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "name" || sortBy === "nim" ? "text-teal-700 dark:text-teal-300 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Nama Mahasiswa"
+                    >
+                      <span>Mahasiswa</span>
+                      {renderSortIcon("name")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("prodi")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "prodi" ? "text-teal-700 dark:text-teal-300 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <span>Prodi</span>
+                      {renderSortIcon("prodi")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("yudisiumDate")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "yudisiumDate" ? "text-teal-700 dark:text-teal-300 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Urutkan berdasarkan Tanggal Yudisium"
+                    >
+                      <span>Tgl Yudisium</span>
+                      {renderSortIcon("yudisiumDate")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <span>Nomor SK Yudisium</span>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-teal-700 dark:text-teal-300">
+                    Dokumen PDF SK Ketua
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    Scan Berkas
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-right">Aksi</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-teal-100/60 dark:divide-teal-500/10">
+                {isLoading && graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto text-teal-600 dark:text-teal-400 mb-2" />
+                      <p className="text-xs">Memuat repositori berkas ijazah & SK yudisium...</p>
+                    </td>
+                  </tr>
+                ) : graduates.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                      <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada data ditemukan</p>
+                      <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci atau filter di atas.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  graduates.map((alumni, idx) => {
+                    const skKey = getSafeKey(alumni.yudisiumDecreeNumber || "");
+                    const isDecreeUploaded = Boolean(uploadedDecrees[skKey]);
+
+                    return (
+                      <tr
+                        key={alumni.id}
+                        className="hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition duration-150 group"
+                      >
+                        {/* 0. No */}
+                        <td className="py-2.5 px-2 text-center font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                          {(currentPage - 1) * pageSize + idx + 1}
+                        </td>
+
+                        {/* 1. Mahasiswa */}
+                        <td className="py-2.5 px-3">
+                          <p
+                            className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-teal-600 dark:group-hover:text-teal-300 transition"
+                            title={alumni.fullName}
+                          >
+                            {alumni.fullName}
+                          </p>
+                          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            {alumni.nim}
+                          </span>
+                        </td>
+
+                        {/* 2. Prodi */}
+                        <td className="py-2.5 px-2">
+                          <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
+                            {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
+                          </span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                            {alumni.degree || "S1"}
+                          </span>
+                        </td>
+
+                        {/* 3. Tgl Yudisium */}
+                        <td className="py-2.5 px-2">
+                          <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            {alumni.yudisiumDate ? new Date(alumni.yudisiumDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                          </span>
+                        </td>
+
+                        {/* 4. Nomor SK */}
+                        <td className="py-2.5 px-2">
+                          <span
+                            className="font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate"
+                            title={alumni.yudisiumDecreeNumber || ""}
+                          >
+                            {alumni.yudisiumDecreeNumber || "-"}
+                          </span>
+                        </td>
+
+                        {/* 5. Dokumen PDF SK Yudisium Ketua */}
+                        <td className="py-2.5 px-2">
+                          {isDecreeUploaded ? (
+                            <a
+                              href={`/api/v1/yudisium-decree/preview?skNumber=${encodeURIComponent(alumni.yudisiumDecreeNumber || "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-xs cursor-pointer"
+                              title="Buka dokumen PDF SK Yudisium Ketua di tab baru"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Lihat SK PDF ↗</span>
+                            </a>
+                          ) : alumni.yudisiumDecreeNumber ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDecreeForUpload(alumni.yudisiumDecreeNumber || "");
+                                setSelectedYudisiumDateForUpload(alumni.yudisiumDate ? alumni.yudisiumDate.split("T")[0] : "");
+                                setIsUploadDecreeModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border border-amber-300 dark:border-amber-500/30 text-[11px] font-semibold transition cursor-pointer shadow-xs"
+                              title="Nomor SK sudah terdaftar. Klik untuk mengunggah berkas scan PDF resmi"
+                            >
+                              <Upload className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                              <span>Unggah PDF SK</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDecreeForUpload("");
+                                setSelectedYudisiumDateForUpload(alumni.yudisiumDate ? alumni.yudisiumDate.split("T")[0] : "");
+                                setIsUploadDecreeModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-dashed border-slate-300 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 text-[11px] font-medium transition cursor-pointer"
+                              title="Belum ada SK. Klik untuk memasukkan Nomor SK untuk tanggal yudisium ini"
+                            >
+                              <span>+ Masukkan SK</span>
+                            </button>
+                          )}
+                        </td>
+
+                        {/* 6. Scan Ijazah & Transkrip */}
+                        <td className="py-2.5 px-2 text-center">
+                          <div className="flex items-center gap-1.5 justify-center">
+                            {alumni.ijazahScan ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPreview(alumni, "ijazah")}
+                                title="Lihat Scan Ijazah"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[9px] font-mono font-bold cursor-pointer transition shadow-2xs"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                <span>IJZ</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(alumni)}
+                                title="Unggah Scan Ijazah"
+                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-mono cursor-pointer hover:bg-slate-200"
+                              >
+                                -IJZ
+                              </button>
+                            )}
+
+                            {alumni.transkripScan ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPreview(alumni, "transkrip")}
+                                title="Lihat Scan Transkrip"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[9px] font-mono font-bold cursor-pointer transition shadow-2xs"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                <span>TRK</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(alumni)}
+                                title="Unggah Scan Transkrip"
+                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-mono cursor-pointer hover:bg-slate-200"
+                              >
+                                -TRK
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 7. Aksi */}
+                        <td className="py-2.5 px-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(alumni)}
+                              title="Kelola Berkas Ijazah & Transkrip"
+                              className="p-1 rounded-lg text-[10px] font-semibold bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 border border-teal-200 dark:border-teal-500/20 transition cursor-pointer"
+                            >
+                              <Upload className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPreview(alumni)}
+                              title="Lihat Detail Lengkap"
+                              className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(alumni)}
+                              title="Ubah Data Mahasiswa"
+                              className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : (
+            /* TABEL REPOSITORI PISN & STATUS IJAZAH (DIPERBARUI: PRODI & PENDAFTARAN TERPISAH + ANGKATAN) */
+            <table className="w-full table-fixed min-w-[1200px] text-left text-slate-700 dark:text-slate-300">
+              <colgroup>
+                <col className="w-[3%]" />   {/* 0. No */}
+                <col className="w-[17%]" />  {/* 1. Mahasiswa */}
+                <col className="w-[9%]" />   {/* 2. Prodi */}
+                <col className="w-[13%]" />  {/* 3. Jenis Pendaftaran */}
+                <col className="w-[6%]" />   {/* 4. Angkatan */}
+                <col className="w-[5.5%]" /> {/* 5. Masuk */}
+                <col className="w-[5.5%]" /> {/* 6. Periode Keluar */}
+                <col className="w-[5.5%]" /> {/* 7. Tahun Keluar */}
+                <col className="w-[15%]" />  {/* 8. Kelulusan & SK */}
+                <col className="w-[15%]" />  {/* 9. PISN & Batch */}
+                <col className="w-[4.5%]" /> {/* 10. Berkas */}
+                <col className="w-[6%]" />   {/* 11. Aksi */}
+              </colgroup>
+
+              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-sm text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08] shadow-2xs">
                 <tr>
                   <th className="py-3 px-2 font-semibold text-center text-slate-500">No</th>
                   <th className="py-3 px-3 font-semibold">
@@ -1814,12 +2354,38 @@ export default function AdminConsolePage() {
                       type="button"
                       onClick={() => handleSort("prodi")}
                       className={`flex items-center gap-1 group transition cursor-pointer ${
-                        sortBy === "prodi" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                        sortBy === "prodi" ? "text-teal-600 dark:text-teal-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                       }`}
                       title="Klik untuk mengurutkan Program Studi"
                     >
-                      <span>Prodi & Jalur</span>
+                      <span>Prodi</span>
                       {renderSortIcon("prodi")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("registrationType")}
+                      className={`flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "registrationType" ? "text-teal-600 dark:text-teal-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Klik untuk mengurutkan Jenis Pendaftaran"
+                    >
+                      <span>Jenis Pendaftaran</span>
+                      {renderSortIcon("registrationType")}
+                    </button>
+                  </th>
+                  <th className="py-3 px-2 font-semibold text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("cohort")}
+                      className={`inline-flex items-center gap-1 group transition cursor-pointer ${
+                        sortBy === "cohort" ? "text-teal-600 dark:text-teal-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                      title="Tahun Angkatan Mahasiswa"
+                    >
+                      <span>Angkatan</span>
+                      {renderSortIcon("cohort")}
                     </button>
                   </th>
                   <th className="py-3 px-2 font-semibold text-center">
@@ -1829,9 +2395,9 @@ export default function AdminConsolePage() {
                       className={`inline-flex items-center gap-1 group transition cursor-pointer ${
                         sortBy === "entryPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                       }`}
-                      title="Periode Masuk Mahasiswa"
+                      title="Periode Masuk Mahasiswa (Semester Masuk)"
                     >
-                      <span>Masuk</span>
+                      <span>Periode Masuk</span>
                       {renderSortIcon("entryPeriod")}
                     </button>
                   </th>
@@ -1842,9 +2408,9 @@ export default function AdminConsolePage() {
                       className={`inline-flex items-center gap-1 group transition cursor-pointer ${
                         sortBy === "exitPeriod" ? "text-indigo-600 dark:text-indigo-400 font-bold" : "hover:text-slate-900 dark:hover:text-white"
                       }`}
-                      title="Periode Keluar / Lulus"
+                      title="Periode Keluar / Semester Kelulusan"
                     >
-                      <span>P. Keluar</span>
+                      <span>Periode Keluar</span>
                       {renderSortIcon("exitPeriod")}
                     </button>
                   </th>
@@ -1857,7 +2423,7 @@ export default function AdminConsolePage() {
                       }`}
                       title="Tahun Keluar Kalender"
                     >
-                      <span>Thn Keluar</span>
+                      <span>Tahun Keluar</span>
                       {renderSortIcon("graduationYear")}
                     </button>
                   </th>
@@ -1887,7 +2453,7 @@ export default function AdminConsolePage() {
                       {renderSortIcon("pisnNumber")}
                     </button>
                   </th>
-                  <th className="py-3 px-1 font-semibold text-center">Berkas</th>
+                  <th className="py-3 px-1 font-semibold text-center" title="Status Berkas Scan Ijazah (IJZ) & Transkrip (TRK) di Server">Berkas PDF</th>
                   <th className="py-3 px-2 font-semibold text-right">Aksi</th>
                 </tr>
               </thead>
@@ -1897,7 +2463,7 @@ export default function AdminConsolePage() {
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-slate-500 dark:text-slate-400">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
-                      <p className="text-xs">Memuat data lulusan dari MongoDB...</p>
+                      <p className="text-xs">Memuat data repositori lulusan...</p>
                     </td>
                   </tr>
                 ) : graduates.length === 0 ? (
@@ -1921,55 +2487,59 @@ export default function AdminConsolePage() {
                         {(currentPage - 1) * pageSize + idx + 1}
                       </td>
 
-                      {/* 1. Mahasiswa Info */}
+                      {/* 1. Mahasiswa Info (Bersih tanpa IPK, IPK ada di tab Skripsi) */}
                       <td className="py-2.5 px-3">
                         <p
-                          className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition"
+                          className="font-semibold text-xs text-slate-900 dark:text-white truncate block group-hover:text-teal-600 dark:group-hover:text-teal-300 transition"
                           title={alumni.fullName}
                         >
                           {alumni.fullName}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                            {alumni.nim}
-                          </span>
-                          {alumni.gpa && (
-                            <span
-                              className={`font-mono text-[9px] font-bold px-1 rounded border ${
-                                alumni.gpa >= 3.75
-                                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20"
-                                  : alumni.gpa >= 3.5
-                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                              }`}
-                              title={`Indeks Prestasi Kumulatif: ${alumni.gpa.toFixed(2)}`}
-                            >
-                              IPK {alumni.gpa.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                          {alumni.nim}
+                        </span>
                       </td>
 
-                      {/* 2. Program Studi & Jalur */}
+                      {/* 2. Program Studi */}
                       <td className="py-2.5 px-2">
                         <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block truncate">
                           {alumni.prodiCode === "61101" ? "S2 Manajemen" : "S1 Manajemen"}
                         </span>
-                        <div className="mt-0.5">
-                          {alumni.registrationType === "RPL_PEROLEHAN_SKS" || alumni.registrationType === "RPL_KONVERSI_SKS" ? (
-                            <span className="inline-block text-[10px] font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 px-1.5 py-0.2 rounded truncate">
-                              RPL Perolehan
-                            </span>
-                          ) : alumni.registrationType === "RPL_TRANSFER_SKS" || alumni.registrationType === "KONVERSI_TRANSFER_NILAI" ? (
-                            <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-1.5 py-0.2 rounded truncate">
-                              RPL Transfer
-                            </span>
-                          ) : (
-                            <span className="inline-block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-1.5 py-0.2 rounded truncate">
-                              Peserta Baru
-                            </span>
-                          )}
-                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {alumni.prodiCode}
+                        </span>
+                      </td>
+
+                      {/* 3. Jenis Pendaftaran (Sesuai Penamaan Resmi Feeder) */}
+                      <td className="py-2.5 px-2">
+                        {alumni.registrationType === "RPL_PEROLEHAN_SKS" || alumni.registrationType === "RPL_KONVERSI_SKS" ? (
+                          <span className="inline-block text-[10px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/15 border border-sky-200 dark:border-sky-500/30 px-2 py-0.5 rounded-md truncate" title="RPL Perolehan SKS">
+                            RPL Perolehan SKS
+                          </span>
+                        ) : alumni.registrationType === "RPL_TRANSFER_SKS" ? (
+                          <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-md truncate" title="RPL Transfer SKS">
+                            RPL Transfer SKS
+                          </span>
+                        ) : alumni.registrationType === "KONVERSI_TRANSFER_NILAI" ? (
+                          <span className="inline-block text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/15 border border-purple-200 dark:border-purple-500/30 px-2 py-0.5 rounded-md truncate" title="Mahasiswa Pindahan">
+                            Pindahan
+                          </span>
+                        ) : alumni.registrationType === "PESERTA_DIDIK_BARU" ? (
+                          <span className="inline-block text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-md truncate" title="Peserta Didik Baru">
+                            Peserta Didik Baru
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[11px] font-mono text-slate-400 dark:text-slate-500 px-2 py-0.5" title="Belum Disinkron">
+                            -
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 4. Angkatan (Kolom Mandiri) */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-mono text-[11px] font-bold text-teal-800 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/60 border border-teal-200/80 dark:border-teal-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                          {alumni.cohortYear || "-"}
+                        </span>
                       </td>
 
                       {/* 3. Periode Masuk */}
@@ -2020,18 +2590,18 @@ export default function AdminConsolePage() {
 
                       {/* 7. Nomor PISN & Batch */}
                       <td className="py-2.5 px-2">
-                        {alumni.pisnNumber ? (
+                        {alumni.pisnNumber || alumni.certificateNumber ? (
                           <div className="flex items-center gap-1">
                             <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 truncate block">
-                              {alumni.pisnNumber}
+                              {alumni.pisnNumber || alumni.certificateNumber}
                             </span>
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(alumni.pisnNumber!)}
-                              title="Salin Nomor PISN"
+                              onClick={() => copyToClipboard((alumni.pisnNumber || alumni.certificateNumber)!)}
+                              title="Salin Nomor PISN / Ijazah"
                               className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition flex-shrink-0 cursor-pointer"
                             >
-                              {copiedPisn === alumni.pisnNumber ? (
+                              {copiedPisn === (alumni.pisnNumber || alumni.certificateNumber) ? (
                                 <Check className="h-3 w-3 text-emerald-500" />
                               ) : (
                                 <Copy className="h-3 w-3" />
@@ -2057,30 +2627,42 @@ export default function AdminConsolePage() {
                             <button
                               type="button"
                               onClick={() => handleOpenPreview(alumni, "ijazah")}
-                              title="Lihat Scan Ijazah"
-                              className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-[9px] font-mono font-bold cursor-pointer"
+                              title={`Lihat Scan Ijazah (${alumni.ijazahScan.fileName || "PDF"})`}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[9px] font-mono font-bold cursor-pointer transition shadow-2xs"
                             >
-                              IJZ
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                              <span>IJZ</span>
                             </button>
                           ) : (
-                            <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Ijazah belum diunggah">
-                              -
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(alumni)}
+                              title="Scan Ijazah belum ada - Klik untuk unggah"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 text-[9px] font-mono text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                            >
+                              + IJZ
+                            </button>
                           )}
 
                           {alumni.transkripScan ? (
                             <button
                               type="button"
                               onClick={() => handleOpenPreview(alumni, "transkrip")}
-                              title="Lihat Scan Transkrip"
-                              className="px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold cursor-pointer"
+                              title={`Lihat Scan Transkrip (${alumni.transkripScan.fileName || "PDF"})`}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 border border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold cursor-pointer transition shadow-2xs"
                             >
-                              TRK
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block" />
+                              <span>TRK</span>
                             </button>
                           ) : (
-                            <span className="px-1 py-0.5 rounded border border-dashed border-slate-200 dark:border-slate-800 text-[9px] font-mono text-slate-400" title="Transkrip belum diunggah">
-                              -
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(alumni)}
+                              title="Scan Transkrip belum ada - Klik untuk unggah"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded border border-dashed border-slate-300 dark:border-slate-700 hover:border-cyan-400 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30 text-[9px] font-mono text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition cursor-pointer"
+                            >
+                              + TRK
+                            </button>
                           )}
                         </div>
                       </td>
@@ -2237,13 +2819,24 @@ export default function AdminConsolePage() {
         </div>
 
         {/* Footer Subtle Meta Bar */}
-        <div className="py-2 px-4 bg-slate-100/70 dark:bg-slate-950/60 border-t border-slate-200/60 dark:border-white/[0.04] flex items-center justify-between text-[10px] text-slate-400">
+        <div className="py-2 px-4 bg-teal-50/70 dark:bg-[#02181c]/60 border-t border-teal-200/60 dark:border-teal-500/10 flex items-center justify-between text-[10px] text-teal-800/70 dark:text-teal-400">
           <span>
-            Mode: <strong>{activeTableTab === "skripsi" ? "Repositori Judul Skripsi & Tesis" : "Repositori PISN & Arsip Ijazah"}</strong> · Data Lulusan S1 & S2 Manajemen STIMI YAPMI Makassar
+            Mode:{" "}
+            <strong>
+              {activeTableTab === "skripsi"
+                ? "Menu IPK & Judul Skripsi"
+                : activeTableTab === "berkas"
+                ? "Menu Ijazah & SK Yudisium"
+                : "Menu Repositori PISN Kemdiktisaintek"}
+            </strong>{" "}
+            · Data Lulusan S1 & S2 Manajemen STIMI YAPMI Makassar
           </span>
           <span className="font-mono">Total {totalRecords} Data Terindeks · Port 3022</span>
         </div>
       </div>
+
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* 5. MODAL: IN-APP DOCUMENT PREVIEW & DETAILS                          */}
@@ -2274,7 +2867,9 @@ export default function AdminConsolePage() {
                         ? "RPL Transfer SKS"
                         : selectedGraduate.registrationType === "KONVERSI_TRANSFER_NILAI"
                         ? "Perolehan SKS (Transfer Nilai)"
-                        : "Peserta Didik Baru"}
+                        : selectedGraduate.registrationType === "PESERTA_DIDIK_BARU"
+                        ? "Peserta Didik Baru"
+                        : "Belum Disinkron"}
                     </span>
                   </div>
                 </div>
@@ -2515,28 +3110,63 @@ export default function AdminConsolePage() {
                     <option value="PESERTA_DIDIK_BARU">Peserta Didik Baru</option>
                     <option value="RPL_PEROLEHAN_SKS">RPL Perolehan SKS</option>
                     <option value="RPL_TRANSFER_SKS">RPL Transfer SKS</option>
+                    <option value="KONVERSI_TRANSFER_NILAI">Pindahan / Konversi Nilai Transfer</option>
+                    <option value="RPL_KONVERSI_SKS">RPL Konversi SKS</option>
                   </select>
                 </div>
               </div>
 
-              {/* Row 3: Periode Masuk & Periode Keluar (Format Kompak YYYY-S) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 3: Tahun Angkatan, Periode Masuk & Periode Keluar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Periode Masuk (Contoh: 2022-1)
+                    Tahun Angkatan *
                   </label>
                   <input
-                    type="text"
-                    placeholder="Contoh: 2022-1"
-                    value={formData.entryPeriod}
-                    onChange={(e) => setFormData({ ...formData, entryPeriod: e.target.value })}
+                    type="number"
+                    required
+                    min={2000}
+                    max={2035}
+                    placeholder="Contoh: 2021"
+                    value={formData.cohortYear || ""}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const currentYearStr = String(formData.cohortYear || "");
+                      const isDefaultPeriod = !formData.entryPeriod || (currentYearStr && formData.entryPeriod.startsWith(currentYearStr));
+                      setFormData({
+                        ...formData,
+                        cohortYear: isNaN(val) ? 0 : val,
+                        entryPeriod: isDefaultPeriod && !isNaN(val) && val > 0 ? `${val}-1` : formData.entryPeriod,
+                      });
+                    }}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Periode Keluar (Contoh: 2025-2)
+                    Periode Masuk (Semester)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: 2021-1"
+                    value={formData.entryPeriod}
+                    onChange={(e) => {
+                      const ep = e.target.value;
+                      const m = ep.match(/^(\d{4})/);
+                      setFormData({
+                        ...formData,
+                        entryPeriod: ep,
+                        cohortYear: m ? parseInt(m[1], 10) : formData.cohortYear,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Periode Keluar (Semester)
                   </label>
                   <input
                     type="text"
@@ -2563,7 +3193,6 @@ export default function AdminConsolePage() {
                       setFormData({
                         ...formData,
                         yudisiumDate: newDate,
-                        yudisiumDecreeNumber: getOfficialSkFromDate(newDate),
                       });
                     }}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -2579,6 +3208,38 @@ export default function AdminConsolePage() {
                     placeholder="Contoh: 042/SK-YUD/STIMI/IX/2026"
                     value={formData.yudisiumDecreeNumber}
                     onChange={(e) => setFormData({ ...formData, yudisiumDecreeNumber: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Row 4B: IPK & Nomor Ijazah Fisik / Internal Kampus */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Indeks Prestasi Kumulatif (IPK)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="4"
+                    placeholder="Contoh: 3.75"
+                    value={formData.gpa}
+                    onChange={(e) => setFormData({ ...formData, gpa: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Nomor Ijazah Fisik (Blanko Kampus)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nomor pada blanko fisik ijazah..."
+                    value={formData.certificateNumber}
+                    onChange={(e) => setFormData({ ...formData, certificateNumber: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
                   />
                 </div>
@@ -2605,21 +3266,54 @@ export default function AdminConsolePage() {
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                      Nomor PISN (21 Digit)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] text-slate-500 dark:text-slate-400">
+                        Nomor PISN (21 Digit)
+                      </label>
+                      <span
+                        className={`text-[10px] font-mono font-bold ${
+                          formData.pisnNumber.length === 21
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : formData.pisnNumber.length > 21
+                            ? "text-rose-500"
+                            : formData.pisnNumber.length > 0
+                            ? "text-amber-500"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {formData.pisnNumber.length === 21
+                          ? "✓ 21/21 Digit (Valid)"
+                          : formData.pisnNumber.length > 21
+                          ? `! Kelebihan ${formData.pisnNumber.length - 21}`
+                          : formData.pisnNumber.length > 0
+                          ? `${formData.pisnNumber.length}/21 Digit`
+                          : "21 Digit"}
+                      </span>
+                    </div>
                     <input
                       type="text"
                       placeholder="093046612012026100074"
                       value={formData.pisnNumber}
-                      onChange={(e) => setFormData({ ...formData, pisnNumber: e.target.value })}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono"
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/[^0-9]/g, "").slice(0, 21);
+                        setFormData({ ...formData, pisnNumber: clean });
+                      }}
+                      className={`w-full px-3 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none font-mono transition ${
+                        formData.pisnNumber.length === 21
+                          ? "border-emerald-500 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500"
+                          : formData.pisnNumber.length > 0
+                          ? "border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                          : "border-slate-200 dark:border-white/10 focus:border-indigo-500"
+                      }`}
                     />
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-mono">
+                      Struktur: 093046 (Kode PT) + 61201 (Prodi) + Tahun + Urut
+                    </p>
                   </div>
 
                   <div>
                     <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                      Nomor / Kode Batch Kemdikbud
+                      Nomor / Kode Batch Kemdiktisaintek
                     </label>
                     <input
                       type="text"
@@ -2639,9 +3333,21 @@ export default function AdminConsolePage() {
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                      File Scan Ijazah (.pdf, maks 10MB)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] text-slate-500 dark:text-slate-400">
+                        File Scan Ijazah (.pdf, maks 10MB)
+                      </label>
+                      {selectedGraduate?.ijazahScan && (
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                          ✓ Sudah Terarsip
+                        </span>
+                      )}
+                    </div>
+                    {selectedGraduate?.ijazahScan && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mb-1 truncate">
+                        File: {selectedGraduate.ijazahScan.fileName}
+                      </p>
+                    )}
                     <input
                       type="file"
                       accept=".pdf"
@@ -2651,9 +3357,21 @@ export default function AdminConsolePage() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                      File Scan Transkrip (.pdf, maks 10MB)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] text-slate-500 dark:text-slate-400">
+                        File Scan Transkrip (.pdf, maks 10MB)
+                      </label>
+                      {selectedGraduate?.transkripScan && (
+                        <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400 font-bold">
+                          ✓ Sudah Terarsip
+                        </span>
+                      )}
+                    </div>
+                    {selectedGraduate?.transkripScan && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mb-1 truncate">
+                        File: {selectedGraduate.transkripScan.fileName}
+                      </p>
+                    )}
                     <input
                       type="file"
                       accept=".pdf"
@@ -2676,9 +3394,19 @@ export default function AdminConsolePage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs shadow-md transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs shadow-md transition disabled:opacity-50 active:scale-[0.98]"
                 >
-                  {isSubmitting ? "Menyimpan ke Server..." : "Simpan Data Lulusan"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{formData.id ? "Simpan Perubahan" : "Simpan Data Lulusan"}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -2798,7 +3526,7 @@ export default function AdminConsolePage() {
                         Pilih file spreadsheet Excel (.xlsx / .xls)
                       </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Format kolom telah diselaraskan dengan permintaan dan ekspor sistem STIMI YAPMI.
+                        Format kolom telah diselaraskan dengan permintaan dan ekspor sistem STIMI YAPMI Makassar.
                       </p>
                     </div>
                     <input
@@ -2890,6 +3618,115 @@ export default function AdminConsolePage() {
           </div>
         </div>
       )}
+      {/* Siam API Modal */}
+      <SiamApiModal
+        isOpen={isSiamModalOpen}
+        onClose={() => setIsSiamModalOpen(false)}
+        totalGraduates={stats?.totalGraduates ?? 0}
+      />
+
+      {/* Upload Decree Modal */}
+      <UploadDecreeModal
+        isOpen={isUploadDecreeModalOpen}
+        onClose={() => {
+          setIsUploadDecreeModalOpen(false);
+          setSelectedDecreeForUpload("");
+          setSelectedYudisiumDateForUpload("");
+        }}
+        onSuccess={() => {
+          fetchDecrees();
+          fetchData(true);
+        }}
+        initialDecreeNumber={selectedDecreeForUpload}
+        initialYudisiumDate={selectedYudisiumDateForUpload}
+        knownDecrees={(stats?.yudisiumDates || []).map((dateStr) => ({
+          dateStr,
+          skNumber: stats?.yudisiumSkMap?.[dateStr] || "",
+          count: stats?.yudisiumCounts?.[dateStr] || 0,
+        }))}
+      />
+
+      {/* Cascade SK Yudisium Confirmation Modal */}
+      {cascadeConfirmData && cascadeConfirmData.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-[#081521] border border-cyan-500/30 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center flex-shrink-0">
+                <FileCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Penyeragaman Nomor SK Yudisium
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Tanggal Yudisium: <strong className="text-cyan-600 dark:text-cyan-400">{cascadeConfirmData.yudisiumDateStr}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+              <p>
+                Anda mengubah Nomor SK untuk <strong>{cascadeConfirmData.fullName}</strong> ({cascadeConfirmData.nim}) menjadi:
+              </p>
+              <p className="font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-white/10 break-all">
+                {cascadeConfirmData.decreeNumber || "(Dikosongkan)"}
+              </p>
+              <p>
+                Ditemukan <strong className="text-cyan-600 dark:text-cyan-400">{cascadeConfirmData.sameDateCount} mahasiswa</strong> dengan tanggal yudisium yang sama ({cascadeConfirmData.yudisiumDateStr}).
+              </p>
+              <p className="text-[11px] text-slate-500 italic">
+                Apakah Anda ingin menerapkan Nomor SK ini ke seluruh {cascadeConfirmData.sameDateCount} mahasiswa pada tanggal tersebut?
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleExecuteSaveWithCascade(true)}
+                disabled={isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-md shadow-cyan-600/20 transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                <span>Ya, Terapkan ke Semua ({cascadeConfirmData.sameDateCount} Mahasiswa)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExecuteSaveWithCascade(false)}
+                disabled={isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-white/10 transition cursor-pointer"
+              >
+                Hanya Mahasiswa Ini Saja
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCascadeConfirmData(null)}
+                disabled={isSubmitting}
+                className="w-full py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xs transition cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
+  );
+}
+
+export default function AdminConsolePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 text-xs font-mono">
+          <RefreshCw className="h-6 w-6 animate-spin text-indigo-600 dark:text-indigo-400 mb-3" />
+          <span>Memuat konsol BAAK...</span>
+        </div>
+      }
+    >
+      <AdminConsoleContent />
+    </Suspense>
   );
 }
