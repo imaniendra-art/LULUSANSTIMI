@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Save,
   Printer,
+  FileText,
 } from "lucide-react";
 
 interface StudentSKItem {
@@ -169,6 +170,42 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
     }
   };
 
+  // Unduh Berkas Permintaan PISN (No, NIM) format .xlsx atau .csv
+  const handleDownloadPisnList = async (group: SKGroup, format: "xlsx" | "csv" = "xlsx") => {
+    try {
+      const res = await fetch("/api/v1/pisn/export-permintaan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          students: group.students,
+          decreeNumber: group.decreeNumber,
+          dateStr: group.dateStr,
+          format,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal mengunduh file Daftar Permintaan PISN");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeSk = group.decreeNumber ? group.decreeNumber.replace(/[/\\?%*:|"<>]/g, "_").trim() : "";
+      const baseName = safeSk
+        ? `DAFTAR_PISN_${safeSk}_(${group.students.length}_Mahasiswa)`
+        : `DAFTAR_PISN_Yudisium_${group.dateStr}_(${group.students.length}_Mahasiswa)`;
+      a.download = `${baseName}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      alert((err as Error).message || "Terjadi kesalahan saat mengunduh berkas PISN.");
+    }
+  };
+
   // Simpan SK jika belum ada
   const handleSaveDecree = async (dateStr: string, groupKey: string) => {
     const skValue = editingSk[dateStr]?.trim();
@@ -241,7 +278,7 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Unggah file Excel hasil ekspor PISN Dikti untuk pengelompokan per SK, buat Lampiran SK, dan SPTJM
+                Unggah file Excel hasil ekspor PISN Dikti untuk membuat 3 berkas per SK: 1. Lampiran SK (.xlsx), 2. Berkas Usulan PISN (No, NIM), 3. Cetak SPTJM Resmi
               </p>
             </div>
           </div>
@@ -422,6 +459,27 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                 </div>
               )}
 
+              {/* 3 Berkas Output Info Banner */}
+              <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                  <span className="font-bold text-teal-950 dark:text-teal-200">
+                    3 Berkas Lengkap Siap Ekspor per Kelompok SK untuk Permintaan PISN Dikti:
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-semibold">
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                    1. Lampiran SK (.xlsx 9 Kolom)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/20">
+                    2. Berkas PISN (No, NIM)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-teal-500/15 text-teal-800 dark:text-teal-300 border border-teal-500/20">
+                    3. SPTJM Resmi (Cetak/PDF)
+                  </span>
+                </div>
+              </div>
+
               {/* Daftar Kelompok SK */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -477,29 +535,50 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                           </div>
                         </div>
 
-                        {/* Action Buttons Header */}
+                        {/* Action Buttons Header: 3 Berkas Wajib PISN */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* 1. Unduh Lampiran SK (.xlsx) */}
+                          {/* 1. Unduh Lampiran SK (.xlsx 9 Kolom) */}
                           <button
                             type="button"
                             onClick={() => handleDownloadExcel(group)}
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm shadow-emerald-600/20 transition cursor-pointer"
-                            title="Unduh Lampiran SK format 9 kolom (NIM, Nama, NIK, Prodi, Jenjang, Tgl Lahir, IPK, Predikat)"
+                            title="1. Lampiran SK: Format 9 kolom (NIM, Nama, NIK, Prodi, Jenjang, Tgl Lahir, IPK, Predikat)"
                           >
                             <FileSpreadsheet className="h-4 w-4" />
-                            <span>Unduh Lampiran SK (.xlsx)</span>
+                            <span>1. Lampiran SK (.xlsx)</span>
                           </button>
 
-                          {/* 2. Cetak / Unduh SPTJM */}
+                          {/* 2. Berkas Permintaan PISN (No, NIM) */}
+                          <div className="inline-flex rounded-xl shadow-sm shadow-indigo-600/20 overflow-hidden border border-indigo-600/30">
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPisnList(group, "xlsx")}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer"
+                              title="2. Berkas Permintaan PISN: Format 2 kolom (No, NIM) Excel untuk diunggah ke portal PISN Dikti"
+                            >
+                              <FileText className="h-4 w-4" />
+                              <span>2. File PISN (No, NIM)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPisnList(group, "csv")}
+                              className="inline-flex items-center px-2 py-2 bg-indigo-700 hover:bg-indigo-600 text-indigo-100 hover:text-white font-mono font-bold text-[11px] border-l border-indigo-500/40 transition cursor-pointer"
+                              title="Unduh format CSV: No,NIM"
+                            >
+                              .CSV
+                            </button>
+                          </div>
+
+                          {/* 3. Cetak / Unduh SPTJM */}
                           <a
                             href={`/api/v1/pisn/sptjm?dateStr=${group.dateStr}&decreeNumber=${encodeURIComponent(group.decreeNumber)}&count=${group.totalStudents}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm shadow-teal-600/20 transition cursor-pointer"
-                            title="Buka dokumen resmi SPTJM bertanda tangan pimpinan untuk dicetak atau disimpan PDF"
+                            title="3. SPTJM Resmi: Surat Pernyataan Tanggung Jawab Mutlak bermeterai untuk dicetak/disimpan PDF"
                           >
                             <Printer className="h-4 w-4" />
-                            <span>Cetak SPTJM</span>
+                            <span>3. Cetak SPTJM</span>
                           </a>
 
                           {/* Toggle Expand */}

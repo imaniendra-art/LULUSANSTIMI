@@ -16,7 +16,7 @@
 | **Phase 3** | Portal Publik & Verifikasi Mandiri PISN (Live Search Ijazah untuk HRD/Publik) | **COMPLETED** |
 | **Phase 4** | Autentikasi Staf BAAK & Proteksi Akses Route (`/login` & `/admin` Session Guard) | **COMPLETED** |
 | **Phase 5** | Konsol BAAK Modul PISN: Multi-Batch Filter, Live Search, In-App PDF Preview, File Upload | **COMPLETED** |
-| **Phase 5.1** | **Generate PISN & Berkas SK**: Upload Mahasiswa Eligible PISN Dikti, Auto-Grouping per Tanggal & SK Yudisium, Ekspor Lampiran SK (9 Kolom), & Generator Resmi Dokumen SPTJM PIN | **COMPLETED** |
+| **Phase 5.1** | **Generate PISN & Berkas SK**: Upload Mahasiswa Eligible PISN Dikti, Auto-Grouping per Tanggal & SK Yudisium, Ekspor 3 Berkas Lengkap: 1. Lampiran SK (9 Kolom), 2. File PISN (No, NIM .xlsx/.csv), 3. Generator Resmi Dokumen SPTJM PIN | **COMPLETED** |
 | **Phase 6** | E-Legalisir Digital (Stempel BAAK & QR Code Validator Publik `/verify/[code]`) | Ready to Start |
 | **Phase 6** | E-Legalisir Digital (Stempel BAAK & QR Code Validator Publik `/verify/[code]`) | Pending |
 | **Phase 7** | Modul Tracer Study Belmawa Dikti (f1 - f17) & Ekspor Matriks Akreditasi | Pending |

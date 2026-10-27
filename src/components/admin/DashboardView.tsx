@@ -473,8 +473,8 @@ export function DashboardView({
                 </h4>
                 <div className="mt-2 space-y-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
                   <p>• Unggah file <strong>Eligible PISN</strong></p>
-                  <p>• Auto-kelompokkan per <strong>SK</strong></p>
-                  <p>• Export <strong>Lampiran SK (9 Kolom)</strong></p>
+                  <p>• <strong>1. Lampiran SK</strong> (9 Kolom)</p>
+                  <p>• <strong>2. File PISN</strong> (No, NIM)</p>
                   <p className="text-teal-600 dark:text-teal-400 font-semibold">• Cetak SPTJM Resmi</p>
                 </div>
               </div>
