@@ -25,6 +25,7 @@ import { PandawaThesisModal } from "./PandawaThesisModal";
 import { UploadDecreeModal } from "./UploadDecreeModal";
 import { PisnResultModal } from "./PisnResultModal";
 import { UploadIjazahTranskripModal } from "./UploadIjazahTranskripModal";
+import { GeneratePisnModal } from "./GeneratePisnModal";
 import { DashboardAnalyticsSuite } from "./DashboardAnalyticsSuite";
 import { AlertCircle, Clock, Sparkles } from "lucide-react";
 
@@ -143,6 +144,7 @@ export function DashboardView({
   const [isPandawaModalOpen, setIsPandawaModalOpen] = useState(false);
   const [isUploadDecreeModalOpen, setIsUploadDecreeModalOpen] = useState(false);
   const [isIjazahTranskripModalOpen, setIsIjazahTranskripModalOpen] = useState(false);
+  const [isGeneratePisnOpen, setIsGeneratePisnOpen] = useState(false);
   const [selectedDecreeForUpload, setSelectedDecreeForUpload] = useState("");
   const [uploadedDecrees, setUploadedDecrees] = useState<Record<string, { fileName: string; size: number }>>({});
 
@@ -243,7 +245,7 @@ export function DashboardView({
 
         {/* Belum Terbit PIN / PISN */}
         <div
-          onClick={() => onSwitchTab("repo")}
+          onClick={() => setIsGeneratePisnOpen(true)}
           className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs flex items-center justify-between transition hover:border-amber-400 dark:hover:border-amber-500/40 hover:-translate-y-0.5 cursor-pointer group"
           title="Klik untuk melihat mahasiswa yang belum memiliki PIN"
         >
@@ -328,7 +330,7 @@ export function DashboardView({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-            <h3 className="text-xs sm:text-sm font-bold tracking-tight text-slate-900 dark:text-white uppercase font-mono">
+            <h3 className="text-xs sm:text-sm font-bold tracking-tight text-slate-900 dark:text-white uppercase font-extrabold">
               Pusat Tindakan Input & Impor Data Lulusan
             </h3>
           </div>
@@ -337,12 +339,12 @@ export function DashboardView({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
           {/* Card 1: Import Lulusan */}
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-indigo-50/70 via-white to-indigo-950/5 dark:from-indigo-950/25 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 hover:border-indigo-500 dark:hover:border-indigo-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                   1. LULUSAN
                 </span>
                 <a
@@ -385,7 +387,7 @@ export function DashboardView({
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-teal-50/70 via-white to-teal-950/5 dark:from-teal-950/25 dark:via-slate-900 dark:to-teal-950/40 border border-teal-200 dark:border-teal-500/30 hover:border-teal-500 dark:hover:border-teal-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30">
                   2. PENDAFTARAN
                 </span>
                 <a
@@ -447,12 +449,55 @@ export function DashboardView({
             </div>
           </div>
 
-          {/* Card 3: Import PISN */}
+                    {/* Card 3: Generate PISN & SK */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-teal-50/70 via-white to-teal-950/5 dark:from-teal-950/25 dark:via-slate-900 dark:to-teal-950/40 border border-teal-200 dark:border-teal-500/30 hover:border-teal-500 dark:hover:border-teal-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30">
+                  3. GENERATE PISN
+                </span>
+                <a
+                  href="https://pisn.kemdiktisaintek.go.id/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline"
+                  title="Buka portal PISN Kemdiktisaintek"
+                >
+                  <span>PISN ↗</span>
+                </a>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                  Generate PISN & SK
+                </h4>
+                <div className="mt-2 space-y-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
+                  <p>• Unggah file <strong>Eligible PISN</strong></p>
+                  <p>• Auto-kelompokkan per <strong>SK</strong></p>
+                  <p>• Export <strong>Lampiran SK (9 Kolom)</strong></p>
+                  <p className="text-teal-600 dark:text-teal-400 font-semibold">• Cetak SPTJM Resmi</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 mt-3 border-t border-teal-100 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setIsGeneratePisnOpen(true)}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-sm shadow-teal-600/20 transition cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Generate PISN & SK</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 4: Import PISN */}
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-emerald-50/70 via-white to-emerald-950/5 dark:from-emerald-950/25 dark:via-slate-900 dark:to-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 hover:border-emerald-500 dark:hover:border-emerald-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
-                  3. NOMOR PISN
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
+                  4. PASANG PISN
                 </span>
                 <a
                   href="https://pisn.kemdiktisaintek.go.id/"
@@ -490,12 +535,12 @@ export function DashboardView({
             </div>
           </div>
 
-          {/* Card 4: Import Judul TA */}
+          {/* Card 5: Import Judul TA */}
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-50/70 via-white to-amber-950/5 dark:from-amber-950/25 dark:via-slate-900 dark:to-amber-950/40 border border-amber-200 dark:border-amber-500/30 hover:border-amber-500 dark:hover:border-amber-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
-                  4. JUDUL TA
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+                  5. JUDUL TA
                 </span>
                 <a
                   href="https://pandawa.stimiyapmim.ac.id/"
@@ -533,12 +578,12 @@ export function DashboardView({
             </div>
           </div>
 
-          {/* Card 5: Upload Berkas Yudisium */}
+          {/* Card 6: Upload Berkas Yudisium */}
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-cyan-50/70 via-white to-cyan-950/5 dark:from-cyan-950/25 dark:via-slate-900 dark:to-cyan-950/40 border border-cyan-200 dark:border-cyan-500/30 hover:border-cyan-500 dark:hover:border-cyan-400 shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
-                  5. BERKAS YUDISIUM
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full tracking-wide bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
+                  6. BERKAS YUDISIUM
                 </span>
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" />
@@ -812,6 +857,18 @@ export function DashboardView({
           onRefreshData?.();
         }}
         onSuccess={() => {
+          onRefreshData?.();
+        }}
+      />
+
+      <GeneratePisnModal
+        isOpen={isGeneratePisnOpen}
+        onClose={() => {
+          setIsGeneratePisnOpen(false);
+          onRefreshData?.();
+        }}
+        onSuccess={() => {
+          fetchDecrees();
           onRefreshData?.();
         }}
       />

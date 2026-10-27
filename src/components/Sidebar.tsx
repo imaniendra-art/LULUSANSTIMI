@@ -1,27 +1,30 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
-  UploadCloud,
   ShieldCheck,
-  Layers,
   Briefcase,
-  Users,
-  Lock,
   Sun,
   Moon,
   ChevronLeft,
   ChevronRight,
-  X,
   GraduationCap,
   Sparkles,
   FileCheck,
+  FileText,
+  Users,
+  Settings,
+  LogOut,
+  ExternalLink,
+  Building2,
+  Globe,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
+import { AdminSettingsModal } from "./admin/AdminSettingsModal";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -35,6 +38,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
+  action?: "settings" | "logout";
 }
 
 interface NavSection {
@@ -51,6 +55,7 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const tabParam = searchParams?.get("tab") || "";
   const filterParam = searchParams?.get("filter") || "";
@@ -58,6 +63,15 @@ export function Sidebar({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, tabParam, filterParam, setMobileOpen]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch {
+      window.location.href = "/login";
+    }
+  };
 
   const navSections: NavSection[] = [
     {
@@ -86,12 +100,38 @@ export function Sidebar({
       ],
     },
     {
-      title: "PORTAL PUBLIK & ALUMNI",
+      title: "PORTAL PUBLIK KAMPUS",
       items: [
         {
-          name: "Verifikasi Web Publik",
+          name: "Verifikasi Ijazah Publik",
           href: "/",
           icon: ShieldCheck,
+        },
+        {
+          name: "Layanan Arsip Dokumen",
+          href: "/#arsip",
+          icon: FileText,
+        },
+        {
+          name: "Tracer Study Kampus",
+          href: "/#tracer",
+          icon: Briefcase,
+        },
+        {
+          name: "Portal IKA Alumni",
+          href: "/#alumni",
+          icon: Users,
+        },
+      ],
+    },
+    {
+      title: "SISTEM KEMENTERIAN",
+      items: [
+        {
+          name: "PISN Kemdiktisaintek",
+          href: "https://pisn.kemdiktisaintek.go.id/",
+          icon: Globe,
+          external: true,
         },
         {
           name: "Tracer Study Dikti",
@@ -100,20 +140,27 @@ export function Sidebar({
           external: true,
         },
         {
-          name: "PISN Kemdiktisaintek",
-          href: "https://pisn.kemdiktisaintek.go.id/",
-          icon: Sparkles,
+          name: "Neo Feeder PDDIKTI",
+          href: "https://feeder.stimiyapmim.ac.id/",
+          icon: Building2,
           external: true,
         },
       ],
     },
     {
-      title: "AKSES STAF",
+      title: "PENGATURAN SISTEM",
       items: [
         {
-          name: "Login Ulang Staf",
-          href: "/login",
-          icon: Lock,
+          name: "Pengaturan Akun Admin",
+          href: "#",
+          icon: Settings,
+          action: "settings",
+        },
+        {
+          name: "Keluar Sesi Admin",
+          href: "#",
+          icon: LogOut,
+          action: "logout",
         },
       ],
     },
@@ -159,8 +206,8 @@ export function Sidebar({
             </>
           ) : (
             <>
-              <Link href="/admin" className="flex items-center gap-3 group">
-                <div className="relative w-9 h-9 rounded-2xl overflow-hidden border border-teal-400/40 bg-white flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+              <Link href="/admin" className="flex items-center gap-3 group min-w-0">
+                <div className="relative w-9 h-9 rounded-2xl overflow-hidden border border-teal-400/40 bg-white flex-shrink-0 flex items-center justify-center shadow-xs group-hover:scale-105 transition duration-200">
                   <Image
                     src="/images/logo.jpg"
                     alt="Logo STIMI YAPMI Makassar"
@@ -170,20 +217,22 @@ export function Sidebar({
                     priority
                   />
                 </div>
-                <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white">
-                  LULUSAN<span className="text-teal-600 dark:text-teal-400">STIMI</span>
-                </span>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-sm tracking-tight text-teal-950 dark:text-white truncate">
+                      LULUSANSTIMI
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded-md bg-teal-500/20 text-teal-800 dark:text-teal-300 text-[9.5px] font-bold tracking-tight">
+                      BAAK
+                    </span>
+                  </div>
+                  <span className="text-[10.5px] font-medium text-teal-700 dark:text-teal-300/80 truncate">
+                    STIMI YAPMI Makassar
+                  </span>
+                </div>
               </Link>
 
-              {isDrawer ? (
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  className="p-1.5 rounded-xl text-teal-700 dark:text-teal-300 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/50 dark:hover:bg-teal-800/40 transition cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              ) : (
+              {!isDrawer && (
                 <button
                   type="button"
                   onClick={() => setCollapsed(true)}
@@ -198,15 +247,15 @@ export function Sidebar({
         </div>
 
         {/* Navigation Sections */}
-        <div className={`flex-1 overflow-y-auto space-y-5 ${isCollapsed ? "px-2 py-4" : "px-3 py-4"}`}>
+        <div className={`flex-1 overflow-y-auto space-y-4.5 ${isCollapsed ? "px-2 py-3" : "px-3 py-3.5"}`}>
           {navSections.map((section, idx) => (
-            <div key={idx} className="space-y-1.5">
+            <div key={idx} className="space-y-1">
               {!isCollapsed && (
-                <h4 className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-teal-700/70 dark:text-teal-400/60 font-mono">
+                <h4 className="px-3 text-[11px] font-bold uppercase tracking-wider text-teal-800/90 dark:text-teal-300/90 font-extrabold tracking-wider pt-1">
                   {section.title}
                 </h4>
               )}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {section.items.map((item, itemIdx) => {
                   let isActive = false;
                   if (pathname === "/admin") {
@@ -219,20 +268,48 @@ export function Sidebar({
                     } else if (item.href === "/admin?tab=berkas") {
                       isActive = tabParam === "berkas" || tabParam === "sk-yudisium";
                     }
-                  } else if (pathname === item.href) {
+                  } else if (pathname === item.href && item.href !== "#") {
                     isActive = true;
                   }
 
                   const Icon = item.icon;
 
                   if (isCollapsed) {
+                    if (item.action === "settings") {
+                      return (
+                        <button
+                          key={itemIdx}
+                          type="button"
+                          onClick={() => setIsSettingsOpen(true)}
+                          title={item.name}
+                          className="w-full flex items-center justify-center p-2.5 rounded-2xl text-xs font-semibold text-teal-900/70 dark:text-teal-100/70 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-900/30 transition cursor-pointer"
+                        >
+                          <Icon className="h-5 w-5 text-teal-700/80 dark:text-teal-400/70" />
+                        </button>
+                      );
+                    }
+
+                    if (item.action === "logout") {
+                      return (
+                        <button
+                          key={itemIdx}
+                          type="button"
+                          onClick={handleLogout}
+                          title={item.name}
+                          className="w-full flex items-center justify-center p-2.5 rounded-2xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-100/60 dark:hover:bg-rose-900/30 transition cursor-pointer"
+                        >
+                          <Icon className="h-5 w-5 text-rose-500" />
+                        </button>
+                      );
+                    }
+
                     return (
                       <Link
                         key={itemIdx}
                         href={item.href}
                         target={item.external ? "_blank" : undefined}
                         title={item.name}
-                        className={`flex items-center justify-center p-2.5 rounded-2xl text-xs font-semibold transition duration-150 ${
+                        className={`flex items-center justify-center p-2.5 rounded-2xl transition duration-150 ${
                           isActive
                             ? "bg-teal-600 text-white shadow-sm dark:bg-teal-500/25 dark:text-teal-200 dark:border dark:border-teal-400/40"
                             : "text-teal-900/70 dark:text-teal-100/70 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-900/30"
@@ -247,23 +324,61 @@ export function Sidebar({
                     );
                   }
 
+                  // Non-collapsed:
+                  if (item.action === "settings") {
+                    return (
+                      <button
+                        key={itemIdx}
+                        type="button"
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-[13.5px] font-bold text-teal-900/85 dark:text-teal-100/80 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-800/30 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Icon className="h-4.5 w-4.5 text-teal-700/80 dark:text-teal-400/70 flex-shrink-0" />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  if (item.action === "logout") {
+                    return (
+                      <button
+                        key={itemIdx}
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-[13.5px] font-bold text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-200 hover:bg-rose-100/70 dark:hover:bg-rose-900/30 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Icon className="h-4.5 w-4.5 text-rose-500 flex-shrink-0" />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+                      </button>
+                    );
+                  }
+
                   return (
                     <Link
                       key={itemIdx}
                       href={item.href}
                       target={item.external ? "_blank" : undefined}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-2xl text-xs font-semibold transition duration-150 ${
+                      className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-[13.5px] font-bold transition duration-150 ${
                         isActive
                           ? "bg-teal-600 text-white shadow-sm dark:bg-teal-500/25 dark:text-teal-100 dark:border dark:border-teal-400/40"
-                          : "text-teal-900/80 dark:text-teal-100/75 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-800/30"
+                          : "text-teal-900/85 dark:text-teal-100/80 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-800/30"
                       }`}
                     >
-                      <Icon
-                        className={`h-4 w-4 flex-shrink-0 ${
-                          isActive ? "text-white dark:text-teal-300" : "text-teal-700/80 dark:text-teal-400/70"
-                        }`}
-                      />
-                      <span className="truncate flex-1 tracking-tight">{item.name}</span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Icon
+                          className={`h-4.5 w-4.5 flex-shrink-0 ${
+                            isActive ? "text-white dark:text-teal-300" : "text-teal-700/80 dark:text-teal-400/70"
+                          }`}
+                        />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      {item.external && (
+                        <ExternalLink className="h-3.5 w-3.5 text-teal-600/70 dark:text-teal-400/60 flex-shrink-0" />
+                      )}
                     </Link>
                   );
                 })}
@@ -272,25 +387,24 @@ export function Sidebar({
           ))}
         </div>
 
-        {/* Footer Sidebar */}
-        <div className={`border-t border-teal-200/80 dark:border-teal-500/20 bg-teal-100/40 dark:bg-teal-950/40 flex-shrink-0 space-y-2.5 ${isCollapsed ? "p-2" : "p-3"}`}>
-          {/* User Role Card */}
+        {/* Footer Sidebar: User Role & Theme Switcher */}
+        <div className={`border-t border-teal-200/80 dark:border-teal-500/20 bg-teal-100/40 dark:bg-teal-950/40 flex-shrink-0 space-y-2 ${isCollapsed ? "p-2" : "p-3"}`}>
           <div
             className={`flex items-center rounded-2xl bg-white/80 dark:bg-teal-900/30 border border-teal-200/90 dark:border-teal-500/20 shadow-2xs ${
               isCollapsed ? "justify-center p-2" : "justify-between p-2.5"
             }`}
           >
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-teal-600 text-white dark:bg-teal-500/20 dark:text-teal-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-teal-600 text-white dark:bg-teal-500/20 dark:text-teal-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
                 B
               </div>
               {!isCollapsed && (
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-teal-950 dark:text-white truncate leading-tight">
-                    Staf BAAK
+                  <span className="text-xs font-bold text-teal-950 dark:text-white truncate">
+                    Administrator BAAK
                   </span>
-                  <span className="text-[10px] text-teal-700 dark:text-teal-300/80 font-mono truncate leading-tight">
-                    STIMI YAPMI
+                  <span className="text-[10.5px] font-medium text-teal-700 dark:text-teal-300/80 truncate leading-tight">
+                    STIMI YAPMI Makassar
                   </span>
                 </div>
               )}
@@ -307,46 +421,22 @@ export function Sidebar({
               ) : (
                 <Moon className="h-4 w-4 text-teal-700" />
               )}
-              {!isCollapsed && (
-                <span className="text-[11px] text-teal-800 dark:text-teal-300 font-medium">
-                  {theme === "dark" ? "Terang" : "Gelap"}
-                </span>
-              )}
             </button>
           </div>
-
-          {/* Server Telemetry Pill */}
-          {isCollapsed ? (
-            <div className="flex justify-center py-1" title="Server On-Premise Aktif (Port 3022)">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
-              </span>
-            </div>
-          ) : (
-            <div className="p-2 rounded-2xl bg-white/70 dark:bg-teal-900/30 border border-teal-200/80 dark:border-teal-500/20 flex items-center justify-between text-[11px] shadow-2xs">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600 dark:bg-teal-400"></span>
-                </span>
-                <span className="text-teal-900 dark:text-teal-200/90 font-medium text-[10px]">
-                  Disk Server Lokal
-                </span>
-              </div>
-              <span className="font-mono text-teal-700 dark:text-teal-300 font-bold text-[10px]">
-                Port 3022
-              </span>
-            </div>
-          )}
         </div>
+
+        {/* Modal Pengaturan Sistem & Akun Admin */}
+        <AdminSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
       </div>
     );
   };
 
   return (
     <>
-      {/* 1. Desktop Floating Rounded Sidebar (Soft Mint Teal in Light Mode, Deep Oceanic Teal in Dark Mode) */}
+      {/* 1. Desktop Floating Rounded Sidebar */}
       <aside
         className={`hidden lg:flex flex-col fixed top-3 left-3 bottom-3 z-40 rounded-3xl bg-[#eaf6f5] dark:bg-[#041d21] border border-teal-200/90 dark:border-teal-500/30 shadow-xl dark:shadow-2xl backdrop-blur-xl transition-all duration-300 ease-in-out overflow-hidden ${
           collapsed ? "w-20" : "w-64"
@@ -355,7 +445,7 @@ export function Sidebar({
         {renderSidebarContent(false)}
       </aside>
 
-      {/* 2. Mobile Drawer Backdrop & Drawer */}
+      {/* 2. Mobile Drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div

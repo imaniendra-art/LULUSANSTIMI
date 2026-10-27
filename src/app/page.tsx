@@ -658,8 +658,8 @@ export default function PublicPortalPage() {
             </div>
           </div>
 
-          {/* Card 2: Layanan Arsip Dokumen (Menggantikan 'Brankas Server Lokal') */}
-          <div className="saas-card rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
+          {/* Card 2: Layanan Arsip Dokumen */}
+          <div id="arsip" className="saas-card scroll-mt-24 rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
             <div className="w-10 h-10 rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/70 border border-emerald-200/90 dark:border-emerald-500/30 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
               <FileText className="h-5 w-5" />
             </div>
@@ -677,7 +677,7 @@ export default function PublicPortalPage() {
           </div>
 
           {/* Card 3: Tracer Study & Karir */}
-          <div className="saas-card rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
+          <div id="tracer" className="saas-card scroll-mt-24 rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
             <div className="w-10 h-10 rounded-2xl bg-cyan-100/70 dark:bg-cyan-950/70 border border-cyan-200/90 dark:border-cyan-500/30 flex items-center justify-center text-cyan-700 dark:text-cyan-300">
               <Briefcase className="h-5 w-5" />
             </div>
@@ -695,7 +695,7 @@ export default function PublicPortalPage() {
           </div>
 
           {/* Card 4: Jejaring Komunitas Alumni */}
-          <div className="saas-card rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
+          <div id="alumni" className="saas-card scroll-mt-24 rounded-2xl sm:rounded-3xl p-6 space-y-4 relative overflow-hidden transition duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md">
             <div className="w-10 h-10 rounded-2xl bg-amber-100/70 dark:bg-amber-950/70 border border-amber-200/90 dark:border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-300">
               <Users className="h-5 w-5" />
             </div>

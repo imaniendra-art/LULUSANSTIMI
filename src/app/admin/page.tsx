@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardView } from "@/components/admin/DashboardView";
 import { UploadDecreeModal } from "@/components/admin/UploadDecreeModal";
+import { GeneratePisnModal } from "@/components/admin/GeneratePisnModal";
 import { SiamApiModal } from "@/components/admin/SiamApiModal";
 import {
   LayoutDashboard,
@@ -252,6 +253,7 @@ function AdminConsoleContent() {
   const [activeTableTab, setActiveTableTab] = useState<"pisn" | "skripsi" | "berkas">("pisn");
   const [uploadedDecrees, setUploadedDecrees] = useState<Record<string, { fileName: string; size: number }>>({});
   const [isUploadDecreeModalOpen, setIsUploadDecreeModalOpen] = useState(false);
+  const [isGeneratePisnModalOpen, setIsGeneratePisnModalOpen] = useState(false);
   const [selectedDecreeForUpload, setSelectedDecreeForUpload] = useState("");
   const [selectedYudisiumDateForUpload, setSelectedYudisiumDateForUpload] = useState("");
   const [cascadeConfirmData, setCascadeConfirmData] = useState<{
@@ -1251,6 +1253,15 @@ function AdminConsoleContent() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={() => setIsGeneratePisnModalOpen(true)}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs shadow-md shadow-teal-600/20 transition cursor-pointer"
+              title="Generate PISN: Unggah mahasiswa eligible PISN, kelompokkan per SK, buat Lampiran SK & SPTJM"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Generate PISN</span>
+            </button>
             <button
               type="button"
               onClick={handleOpenAdd}
@@ -3623,6 +3634,19 @@ function AdminConsoleContent() {
         isOpen={isSiamModalOpen}
         onClose={() => setIsSiamModalOpen(false)}
         totalGraduates={stats?.totalGraduates ?? 0}
+      />
+
+
+      {/* Generate PISN & SK Modal */}
+      <GeneratePisnModal
+        isOpen={isGeneratePisnModalOpen}
+        onClose={() => {
+          setIsGeneratePisnModalOpen(false);
+          fetchData();
+        }}
+        onSuccess={() => {
+          fetchData();
+        }}
       />
 
       {/* Upload Decree Modal */}

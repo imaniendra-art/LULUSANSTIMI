@@ -68,6 +68,10 @@ Setiap entri data kelulusan dalam database MongoDB wajib memuat:
   Admin dan alumni dapat melihat pratinjau PDF langsung di browser (in-app preview) dan mendownload salinan resolusi penuh.
 - **Export Data PISN Siap Lapor**:
   Ekspor data tabular ke Excel format baku laporan PDDIKTI / LLDIKTI IX.
+- **Generate PISN & Berkas SK Otomatis (Smart SK & SPTJM Hub)**:
+  Unggah daftar mahasiswa *Eligible* hasil unduhan portal PISN Kemdiktisaintek. Sistem secara otomatis mencocokkan NIM dengan master database lulusan, mengelompokkan mahasiswa per tanggal yudisium dan nomor SK, serta menghasilkan:
+  1. **Lampiran SK Yudisium (.xlsx)** dengan format resmi 9 kolom: `NO, NIM, NAMA MAHASISWA, NIK, PRODI, JENJANG, TANGGAL LAHIR, IPK, PREDIKAT`.
+  2. **Dokumen Resmi SPTJM PIN**: Surat Pernyataan Tanggung Jawab Mutlak bermaterai Rp 10.000 bertanda tangan Ketua STIMI YAPMI Makassar siap cetak/simpan PDF per SK.
 
 ---
 
