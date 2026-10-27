@@ -7,17 +7,16 @@ import { useRouter } from "next/navigation";
 import {
   Lock,
   User,
-  ShieldCheck,
   ArrowRight,
   AlertCircle,
-  Sparkles,
-  Server,
-  Database,
   Eye,
   EyeOff,
   Sun,
   Moon,
-  Globe,
+  FileText,
+  Award,
+  GraduationCap,
+  ArrowLeft,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -56,32 +55,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isDemo: true }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Gagal login demo");
-      }
-
-      router.push("/admin");
-    } catch (err: unknown) {
-      setError((err as Error).message || "Terjadi kesalahan login demo");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen lg:h-screen lg:max-h-screen bg-[#f4faf9] dark:bg-[#021013] text-teal-950 dark:text-teal-50 flex flex-col justify-between p-3 sm:p-5 lg:p-6 overflow-y-auto lg:overflow-hidden font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-[#f4faf9] dark:bg-[#021013] text-teal-950 dark:text-teal-50 flex flex-col justify-between p-3 sm:p-5 lg:p-6 font-sans selection:bg-teal-500 selection:text-white">
       {/* Floating Island Header Bar */}
       <header className="w-full max-w-4xl mx-auto h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 px-4 sm:px-6 flex items-center justify-between flex-shrink-0 mb-4 shadow-lg shadow-teal-950/5 dark:shadow-black/30">
         <Link href="/" className="flex items-center gap-2.5 group">
@@ -99,7 +74,7 @@ export default function LoginPage() {
             <span className="font-extrabold text-sm tracking-tight text-teal-950 dark:text-white">
               LULUSAN<span className="text-teal-600 dark:text-teal-400">STIMI</span>
             </span>
-            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-teal-100/70 dark:bg-teal-950/90 text-teal-800 dark:text-teal-300 border border-teal-300/70 dark:border-teal-500/30">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100/70 dark:bg-teal-950/90 text-teal-800 dark:text-teal-300 border border-teal-300/70 dark:border-teal-500/30">
               PORTAL BAAK
             </span>
           </div>
@@ -127,7 +102,7 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center w-full my-auto py-2">
         <div className="max-w-4xl w-full mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl dark:shadow-2xl border border-teal-200/90 dark:border-teal-500/30 bg-white/95 dark:bg-[#041d21]/95 backdrop-blur-xl">
-            {/* Left Column: Soft Mint in Light Mode, Deep Oceanic Teal in Dark Mode */}
+            {/* Left Column: Campus Information (Human & Normal) */}
             <div className="p-6 sm:p-8 lg:p-9 flex flex-col justify-between border-b md:border-b-0 md:border-r border-teal-200/80 dark:border-teal-500/30 bg-[#eaf6f5]/70 dark:bg-[#03171a]">
               <div>
                 {/* Emblem & Institution Header */}
@@ -151,46 +126,46 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Title & Description */}
+                {/* Title & Description (Human & Normal) */}
                 <h1 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-teal-950 dark:text-white mb-2.5">
-                  Konsol Repositori PISN & Kredensial
+                  Sistem Informasi Kelulusan & Alumni
                 </h1>
                 <p className="text-xs text-teal-900/80 dark:text-teal-100/75 leading-relaxed">
-                  Akses khusus staf Administrasi Akademik & Kemahasiswaan (BAAK) untuk validasi batch Belmawa, pengarsipan nomor ijazah nasional, dan transkrip kelulusan.
+                  Layanan pengelola akademik untuk verifikasi data yudisium, penomoran ijazah nasional (PISN/PIN), pengesahan dokumen, dan tracer study STIMI YAPMI Makassar.
                 </p>
               </div>
 
-              {/* Badges of Authenticity */}
+              {/* Layanan Akademik Informasi */}
               <div className="mt-6 pt-5 border-t border-teal-200/80 dark:border-teal-500/30 space-y-2.5">
                 <div className="flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-100">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                  <span className="font-medium">Terintegrasi 10 Batch PISN Belmawa (87 Lulusan)</span>
+                  <Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                  <span className="font-medium">Usulan Penomoran Ijazah Nasional (PISN/PIN)</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-100">
-                  <Server className="h-4 w-4 text-cyan-500 flex-shrink-0" />
-                  <span className="font-medium">Penyimpanan Berkas Hard Disk PC Server Lokal</span>
+                  <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                  <span className="font-medium">Penerbitan SK Yudisium & Berkas SPTJM Resmi</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-100">
-                  <Database className="h-4 w-4 text-teal-500 flex-shrink-0" />
-                  <span className="font-medium">Database MongoDB Atlas Terisolasi</span>
+                  <GraduationCap className="h-4 w-4 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
+                  <span className="font-medium">Pengelolaan Arsip Ijazah & Transkrip Nilai</span>
                 </div>
 
-                {/* Server Status Indicator */}
-                <div className="pt-2 flex items-center gap-2 text-[11px] text-teal-800/80 dark:text-teal-300/80 font-mono">
-                  <span className="w-2 h-2 rounded-full bg-teal-500 inline-block animate-pulse" />
-                  <span>Server On-Premise Aktif (Port 3022)</span>
+                {/* Campus Status */}
+                <div className="pt-2 flex items-center gap-2 text-[11px] text-teal-800/80 dark:text-teal-300/80">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span>Kampus Terakreditasi BAN-PT · LLDIKTI Wilayah IX</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Modern High-Contrast Login Form */}
+            {/* Right Column: Normal Login Form */}
             <div className="p-6 sm:p-8 lg:p-9 flex flex-col justify-center bg-white dark:bg-[#041d21]">
               <div className="mb-5">
                 <h2 className="text-lg sm:text-xl font-bold text-teal-950 dark:text-white tracking-tight">
-                  Masuk ke Konsol BAAK
+                  Masuk ke Akun Staf
                 </h2>
                 <p className="text-xs text-teal-800/70 dark:text-teal-300/70 mt-1">
-                  Gunakan kredensial staf atau tombol akses cepat demo.
+                  Silakan masukkan email atau username dan kata sandi Anda.
                 </p>
               </div>
 
@@ -201,18 +176,18 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-3.5">
+              <form onSubmit={handleLogin} className="space-y-4">
                 {/* Identifier Input */}
                 <div>
                   <label className="block text-xs font-semibold text-teal-950 dark:text-teal-100 mb-1">
-                    Email Staf / Username Admin
+                    Email Staf / Username
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-3 h-4 w-4 text-teal-500/70" />
                     <input
                       type="text"
                       required
-                      placeholder="baak@stimi-yapmi.ac.id atau ADMIN001"
+                      placeholder="contoh: baak@stimi-yapmi.ac.id"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-teal-50/50 dark:bg-[#02181c] border border-teal-200/90 dark:border-teal-500/30 rounded-xl text-xs text-teal-950 dark:text-white placeholder-teal-700/50 dark:placeholder-teal-300/40 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition"
@@ -230,7 +205,7 @@ export default function LoginPage() {
                     <input
                       type={showPassword ? "text" : "password"}
                       required
-                      placeholder="••••••••••••"
+                      placeholder="Masukkan kata sandi"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-10 pr-10 py-2.5 bg-teal-50/50 dark:bg-[#02181c] border border-teal-200/90 dark:border-teal-500/30 rounded-xl text-xs text-teal-950 dark:text-white placeholder-teal-700/50 dark:placeholder-teal-300/40 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition"
@@ -255,7 +230,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full mt-1 py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isLoading ? (
                     <span className="flex items-center gap-2">
@@ -264,37 +239,25 @@ export default function LoginPage() {
                     </span>
                   ) : (
                     <>
-                      <span>Masuk ke Konsol</span>
+                      <span>Masuk ke Sistem</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Quick 1-Click BAAK Demo Access */}
-              <div className="mt-4 pt-3.5 border-t border-teal-200/80 dark:border-teal-500/30">
-                <p className="text-[11px] text-teal-700/80 dark:text-teal-300/70 text-center mb-2">
-                  Pengujian Cepat Administrator:
+              {/* Help & Return Link */}
+              <div className="mt-5 pt-4 border-t border-teal-100 dark:border-teal-500/20 space-y-3 text-center">
+                <p className="text-[11px] text-teal-700/80 dark:text-teal-300/70">
+                  Lupa kata sandi atau butuh akses akun baru? Hubungi BAAK atau Administrator.
                 </p>
-                <button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  disabled={isLoading}
-                  className="w-full py-2.5 px-3 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/70 dark:hover:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-semibold text-xs rounded-xl border border-teal-200/90 dark:border-teal-500/30 transition flex items-center justify-center gap-2 group cursor-pointer"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition" />
-                  <span>Masuk Otomatis Sebagai Admin BAAK (1-Klik)</span>
-                </button>
-              </div>
 
-              {/* Public Portal Button Inside Card */}
-              <div className="mt-3.5 pt-3 border-t border-teal-100 dark:border-teal-500/20">
                 <Link
                   href="/"
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-teal-200/90 dark:border-teal-500/30 bg-teal-50/50 hover:bg-teal-100/60 dark:bg-[#02181c] dark:hover:bg-[#032025] text-teal-900 dark:text-teal-200 hover:text-teal-600 dark:hover:text-teal-300 font-semibold text-xs transition flex items-center justify-center gap-2 group cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-600 dark:hover:text-teal-200 transition py-1"
                 >
-                  <Globe className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 group-hover:rotate-12 transition" />
-                  <span>Buka Portal Verifikasi Publik</span>
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Kembali ke Halaman Utama</span>
                 </Link>
               </div>
             </div>
@@ -305,7 +268,7 @@ export default function LoginPage() {
       {/* Floating Island Footer */}
       <footer className="w-full max-w-4xl mx-auto text-center flex-shrink-0 pt-2">
         <p className="text-[11px] text-teal-800/80 dark:text-teal-300/80 font-medium">
-          © 2026 STIMI YAPMI Makassar · Kode PT: 093046 · LLDIKTI Wilayah IX · Repositori Resmi Kelulusan & PISN
+          © 2026 Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar · LLDIKTI Wilayah IX
         </p>
       </footer>
     </div>
