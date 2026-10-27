@@ -401,7 +401,7 @@ export function Sidebar({
     <>
       {/* 1. Desktop Floating Rounded Sidebar */}
       <aside
-        className={`hidden lg:flex flex-col fixed top-3 left-3 bottom-3 z-40 rounded-3xl bg-[#eaf6f5] dark:bg-[#041d21] border border-teal-200/90 dark:border-teal-500/30 shadow-xl dark:shadow-2xl backdrop-blur-xl transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`hidden lg:flex flex-col fixed top-4 left-4 bottom-4 z-40 rounded-3xl bg-[#eaf6f5] dark:bg-[#041d21] border border-teal-200/90 dark:border-teal-500/30 shadow-xl dark:shadow-2xl backdrop-blur-xl transition-all duration-300 ease-in-out overflow-hidden ${
           collapsed ? "w-20" : "w-64"
         }`}
       >

@@ -38,6 +38,8 @@ function AdminHeader({
     ? "Menu IPK & Judul Skripsi — Rekapitulasi Nilai & Judul Tesis"
     : tab === "berkas"
     ? "Menu Ijazah & SK Yudisium — Berkas Scan & Dokumen Keputusan Ketua"
+    : tab === "settings"
+    ? "Pengaturan Sistem — Akun Staf BAAK & Identitas Dokumen"
     : "Konsol BAAK";
 
   const handleLogout = async () => {
@@ -50,7 +52,7 @@ function AdminHeader({
   };
 
   return (
-    <header className="sticky top-3 z-30 mx-3 sm:mx-5 lg:mx-6 mt-3 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 px-3 sm:px-5 flex items-center justify-between flex-shrink-0 shadow-lg shadow-teal-950/5 dark:shadow-black/30">
+    <header className="sticky top-4 z-30 mx-3 sm:mx-5 lg:ml-0 lg:mr-4 mt-3 lg:mt-4 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 px-3 sm:px-5 flex items-center justify-between flex-shrink-0 shadow-lg shadow-teal-950/5 dark:shadow-black/30">
       {/* Left: Mobile Drawer Trigger & Dynamic Breadcrumb */}
       <div className="flex items-center gap-3">
         <button
@@ -151,13 +153,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Dynamic Left Padding with Smooth 300ms Expansion for Floating Sidebar */}
         <div
           className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
-            sidebarCollapsed ? "lg:pl-[96px]" : "lg:pl-[284px]"
+            sidebarCollapsed ? "lg:pl-[112px]" : "lg:pl-[288px]"
           }`}
         >
           {/* Admin Floating Island Header */}
           <React.Suspense
             fallback={
-              <header className="sticky top-3 z-30 mx-3 sm:mx-5 lg:mx-6 mt-3 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 border border-teal-200/90 dark:border-teal-500/30" />
+              <header className="sticky top-4 z-30 mx-3 sm:mx-5 lg:ml-0 lg:mr-4 mt-3 lg:mt-4 mb-2 h-16 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 border border-teal-200/90 dark:border-teal-500/30" />
             }
           >
             <AdminHeader
@@ -169,12 +171,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </React.Suspense>
 
           {/* Admin Main Viewport */}
-          <main className="flex-1 w-full px-3 sm:px-5 lg:px-6 py-4">
+          <main className="flex-1 w-full px-3 sm:px-5 lg:pl-0 lg:pr-4 py-3">
             {children}
           </main>
 
           {/* Admin Floating Island Footer */}
-          <footer className="mx-3 sm:mx-5 lg:mx-6 my-3 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-3.5 px-4 sm:px-6 shadow-md shadow-teal-950/5 dark:shadow-black/20">
+          <footer className="mx-3 sm:mx-5 lg:ml-0 lg:mr-4 my-3 lg:my-4 rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-[#041d21]/90 backdrop-blur-xl border border-teal-200/90 dark:border-teal-500/30 text-teal-800/80 dark:text-teal-200/80 text-xs py-3.5 px-4 sm:px-6 shadow-md shadow-teal-950/5 dark:shadow-black/20">
             <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-lg border border-teal-300/60 dark:border-teal-500/30 overflow-hidden bg-white flex-shrink-0 flex items-center justify-center shadow-xs">
