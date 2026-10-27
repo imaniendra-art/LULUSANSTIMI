@@ -9,6 +9,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:db-push": "prisma db push",
+    "ensure:admin": "node scripts/ensure_admin.mjs",
     "db:seed": "node scripts/seed.mjs"
   },
   "dependencies": {
