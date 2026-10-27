@@ -537,16 +537,28 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
 
                         {/* Action Buttons Header: 3 Berkas Wajib PISN */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* 1. Unduh Lampiran SK (.xlsx 9 Kolom) */}
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadExcel(group)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm shadow-emerald-600/20 transition cursor-pointer"
-                            title="1. Lampiran SK: Format 9 kolom (NIM, Nama, NIK, Prodi, Jenjang, Tgl Lahir, IPK, Predikat)"
-                          >
-                            <FileSpreadsheet className="h-4 w-4" />
-                            <span>1. Lampiran SK (.xlsx)</span>
-                          </button>
+                          {/* 1. Unduh Lampiran SK (.xlsx & Cetak/PDF) */}
+                          <div className="inline-flex rounded-xl shadow-sm shadow-emerald-600/20 overflow-hidden border border-emerald-600/30">
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadExcel(group)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer"
+                              title="1. Lampiran SK: Format 9 kolom Excel (.xlsx) sesuai standar Dikti"
+                            >
+                              <FileSpreadsheet className="h-4 w-4" />
+                              <span>1. Lampiran SK (.xlsx)</span>
+                            </button>
+                            <a
+                              href={`/api/v1/pisn/lampiran-sk?dateStr=${group.dateStr}&decreeNumber=${encodeURIComponent(group.decreeNumber)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-emerald-100 hover:text-white font-bold text-[11px] border-l border-emerald-500/40 transition cursor-pointer"
+                              title="Cetak Dokumen Resmi Lampiran SK (Lengkap KOP & TTD) / Simpan PDF"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                              <span>PDF</span>
+                            </a>
+                          </div>
 
                           {/* 2. Berkas Permintaan PISN (No, NIM) */}
                           <div className="inline-flex rounded-xl shadow-sm shadow-indigo-600/20 overflow-hidden border border-indigo-600/30">

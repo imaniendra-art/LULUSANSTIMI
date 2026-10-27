@@ -15,7 +15,7 @@ export interface InstitutionConfig {
 }
 
 export const defaultInstitutionSettings: InstitutionConfig = {
-  leaderName: "Dr. Ibrahim Syah SE., MM.",
+  leaderName: "Dr. Ibrahim Syah, S.E., M.M",
   leaderNidn: "0918066801",
   leaderPangkat: "Asisten Ahli/III.b",
   leaderTitle: "Ketua STIMI YAPMI Makassar",

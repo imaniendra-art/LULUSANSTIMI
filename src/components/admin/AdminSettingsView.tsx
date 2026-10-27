@@ -1014,7 +1014,7 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
                 </p>
               </div>
 
-              <div className="pt-1">
+              <div className="pt-1 space-y-2">
                 <button
                   type="submit"
                   disabled={isInstSaving}
@@ -1032,6 +1032,28 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
                     </>
                   )}
                 </button>
+
+                {/* Tombol Uji Coba Dokumen Cetak */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href="/api/v1/pisn/lampiran-sk?decreeNumber=000.2/342/STIMI-YAPMI/MKS/VII/2026&dateStr=2026-07-31"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-teal-50 hover:border-teal-300 dark:hover:bg-slate-800 transition text-center"
+                    title="Uji coba pratinjau cetak Lampiran SK Yudisium dengan KOP & TTD"
+                  >
+                    <span>📄 Tes Lampiran SK</span>
+                  </a>
+                  <a
+                    href="/api/v1/pisn/sptjm?decreeNumber=000.2/342/STIMI-YAPMI/MKS/VII/2026&dateStr=2026-07-31&count=26"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-teal-50 hover:border-teal-300 dark:hover:bg-slate-800 transition text-center"
+                    title="Uji coba pratinjau cetak SPTJM PIN"
+                  >
+                    <span>📄 Tes SPTJM PIN</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
