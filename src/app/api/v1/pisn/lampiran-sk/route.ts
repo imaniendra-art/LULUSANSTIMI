@@ -467,7 +467,6 @@ export async function GET(req: NextRequest) {
   </div>
 
   <div class="page-container">
-    {/* KOP RESMI */}
     <div class="kop-container">
       ${
         kopBase64
@@ -481,7 +480,6 @@ export async function GET(req: NextRequest) {
       }
     </div>
 
-    {/* HEADER KETERANGAN LAMPIRAN SK (SESUAI GAMBAR 1) */}
     <div class="lampiran-header">
       <table class="lampiran-table">
         <tr>
@@ -507,7 +505,6 @@ export async function GET(req: NextRequest) {
       </table>
     </div>
 
-    {/* TABEL DAFTAR MAHASISWA */}
     <table class="students-table">
       <thead>
         <tr>
@@ -540,7 +537,6 @@ export async function GET(req: NextRequest) {
       </tbody>
     </table>
 
-    {/* BLOK TANDA TANGAN HALAMAN TERAKHIR (SESUAI GAMBAR 2) */}
     <div class="footer-ttd-container">
       <div class="ttd-box">
         <table class="ttd-meta-table">
