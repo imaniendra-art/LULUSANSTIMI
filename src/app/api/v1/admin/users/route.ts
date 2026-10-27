@@ -130,3 +130,50 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Gagal menghapus akun admin" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, password, role, status } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID user wajib diisi" }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (password && typeof password === "string" && password.trim().length >= 6) {
+      updateData.passwordHash = crypto.createHash("sha256").update(password.trim()).digest("hex");
+    } else if (password) {
+      return NextResponse.json({ error: "Password minimal 6 karakter" }, { status: 400 });
+    }
+
+    if (role && ["ADMIN_BAAK", "SUPERADMIN"].includes(role)) {
+      updateData.role = role;
+    }
+
+    if (status && ["ACTIVE", "INACTIVE"].includes(status)) {
+      updateData.status = status;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        nim: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Akun ${updated.email} berhasil diperbarui.`,
+      user: updated,
+    });
+  } catch (error) {
+    console.error("Update admin user error:", error);
+    return NextResponse.json({ error: "Gagal memperbarui akun admin" }, { status: 500 });
+  }
+}

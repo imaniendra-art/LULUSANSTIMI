@@ -24,7 +24,6 @@ import {
   Globe,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
-import { AdminSettingsModal } from "./admin/AdminSettingsModal";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -38,7 +37,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
-  action?: "settings" | "logout";
+  action?: "logout";
 }
 
 interface NavSection {
@@ -55,7 +54,6 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const tabParam = searchParams?.get("tab") || "";
   const filterParam = searchParams?.get("filter") || "";
@@ -151,10 +149,9 @@ export function Sidebar({
       title: "PENGATURAN SISTEM",
       items: [
         {
-          name: "Pengaturan Akun Admin",
-          href: "#",
+          name: "Pengaturan Sistem",
+          href: "/admin?tab=settings",
           icon: Settings,
-          action: "settings",
         },
         {
           name: "Keluar Sesi Admin",
@@ -267,6 +264,8 @@ export function Sidebar({
                       isActive = tabParam === "skripsi" || filterParam === "skripsi";
                     } else if (item.href === "/admin?tab=berkas") {
                       isActive = tabParam === "berkas" || tabParam === "sk-yudisium";
+                    } else if (item.href === "/admin?tab=settings") {
+                      isActive = tabParam === "settings";
                     }
                   } else if (pathname === item.href && item.href !== "#") {
                     isActive = true;
@@ -275,20 +274,6 @@ export function Sidebar({
                   const Icon = item.icon;
 
                   if (isCollapsed) {
-                    if (item.action === "settings") {
-                      return (
-                        <button
-                          key={itemIdx}
-                          type="button"
-                          onClick={() => setIsSettingsOpen(true)}
-                          title={item.name}
-                          className="w-full flex items-center justify-center p-2.5 rounded-2xl text-xs font-semibold text-teal-900/70 dark:text-teal-100/70 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-900/30 transition cursor-pointer"
-                        >
-                          <Icon className="h-5 w-5 text-teal-700/80 dark:text-teal-400/70" />
-                        </button>
-                      );
-                    }
-
                     if (item.action === "logout") {
                       return (
                         <button
@@ -325,22 +310,6 @@ export function Sidebar({
                   }
 
                   // Non-collapsed:
-                  if (item.action === "settings") {
-                    return (
-                      <button
-                        key={itemIdx}
-                        type="button"
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-[13.5px] font-bold text-teal-900/85 dark:text-teal-100/80 hover:text-teal-950 dark:hover:text-white hover:bg-teal-200/60 dark:hover:bg-teal-800/30 transition cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Icon className="h-4.5 w-4.5 text-teal-700/80 dark:text-teal-400/70 flex-shrink-0" />
-                          <span className="truncate">{item.name}</span>
-                        </div>
-                      </button>
-                    );
-                  }
-
                   if (item.action === "logout") {
                     return (
                       <button
@@ -424,12 +393,6 @@ export function Sidebar({
             </button>
           </div>
         </div>
-
-        {/* Modal Pengaturan Sistem & Akun Admin */}
-        <AdminSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
       </div>
     );
   };

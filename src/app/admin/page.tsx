@@ -8,6 +8,7 @@ import { DashboardView } from "@/components/admin/DashboardView";
 import { UploadDecreeModal } from "@/components/admin/UploadDecreeModal";
 import { GeneratePisnModal } from "@/components/admin/GeneratePisnModal";
 import { SiamApiModal } from "@/components/admin/SiamApiModal";
+import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
 import {
   LayoutDashboard,
   UploadCloud,
@@ -221,8 +222,10 @@ function AdminConsoleContent() {
   const tabParam = searchParams.get("tab");
   const filterParam = searchParams.get("filter");
 
-  const mainTab: "dashboard" | "repo" =
-    tabParam === "repo" || tabParam === "pisn" || tabParam === "skripsi" || tabParam === "berkas"
+  const mainTab: "dashboard" | "repo" | "settings" =
+    tabParam === "settings"
+      ? "settings"
+      : tabParam === "repo" || tabParam === "pisn" || tabParam === "skripsi" || tabParam === "berkas"
       ? "repo"
       : "dashboard";
   const router = useRouter();
@@ -2847,6 +2850,17 @@ function AdminConsoleContent() {
       </div>
 
         </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* ==================================================================== */}
+      {/* 4. SETTINGS VIEW TAB                                                 */}
+      {/* ==================================================================== */}
+      {mainTab === "settings" && (
+        <AdminSettingsView
+          currentUser={currentUser}
+          onRefresh={fetchData}
+        />
       )}
 
       {/* ==================================================================== */}
