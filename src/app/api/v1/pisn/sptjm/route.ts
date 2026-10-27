@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import fs from "fs";
+import path from "path";
 
 function formatIndoDate(d?: Date | string | null): string {
   if (!d) return "-";
@@ -40,6 +42,18 @@ export async function GET(req: NextRequest) {
     totalStudents = count;
   }
 
+  // Muat gambar KOP STIMI dari folder public dan encode ke Base64 Data URI untuk print reliability
+  let kopBase64 = "";
+  try {
+    const kopPath = path.join(process.cwd(), "public", "kop-stimi.jpg");
+    if (fs.existsSync(kopPath)) {
+      const imgBuffer = fs.readFileSync(kopPath);
+      kopBase64 = `data:image/jpeg;base64,${imgBuffer.toString("base64")}`;
+    }
+  } catch (e) {
+    console.error("Gagal membaca berkas kop-stimi.jpg:", e);
+  }
+
   const todayStr = formatIndoDate(new Date());
 
   const html = `<!DOCTYPE html>
@@ -47,7 +61,7 @@ export async function GET(req: NextRequest) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPTJM PIN - ${decreeNumber || dateStr || "STIMI YAPMI"}</title>
+  <title>SPTJM PIN - SK ${decreeNumber || dateStr || "STIMI YAPMI"}</title>
   <style>
     * {
       box-sizing: border-box;
@@ -116,13 +130,23 @@ export async function GET(req: NextRequest) {
       min-height: 297mm;
       margin: 24px auto;
       background: #fff;
-      padding: 25mm 25mm 25mm 30mm;
+      padding: 20mm 25mm 25mm 25mm;
       box-shadow: 0 8px 30px rgba(0,0,0,0.08);
     }
-    .kop-surat {
+    .kop-container {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .kop-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+    .kop-fallback {
       border-bottom: 3px double #000;
       padding-bottom: 12px;
-      margin-bottom: 24px;
       text-align: center;
     }
     .kop-yayasan {
@@ -149,7 +173,7 @@ export async function GET(req: NextRequest) {
     }
     .title-doc {
       text-align: center;
-      margin: 20px 0 16px;
+      margin: 18px 0 16px;
     }
     .title-doc h2 {
       font-size: 12pt;
@@ -170,7 +194,7 @@ export async function GET(req: NextRequest) {
       margin-bottom: 10px;
     }
     .identitas-table {
-      margin: 12px 0 16px 20px;
+      margin: 10px 0 16px 20px;
       font-size: 11pt;
       border-collapse: collapse;
     }
@@ -190,11 +214,12 @@ export async function GET(req: NextRequest) {
       padding-left: 0;
     }
     ol.pernyataan-list li {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       padding-left: 6px;
+      line-height: 1.65;
     }
     .footer-ttd {
-      margin-top: 40px;
+      margin-top: 35px;
       display: flex;
       justify-content: flex-end;
     }
@@ -207,7 +232,7 @@ export async function GET(req: NextRequest) {
       width: 110px;
       height: 70px;
       border: 1px dashed #666;
-      margin: 18px auto 12px;
+      margin: 16px auto 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -221,7 +246,7 @@ export async function GET(req: NextRequest) {
       text-decoration: underline;
     }
     .notes-box {
-      margin-top: 50px;
+      margin-top: 45px;
       padding-top: 10px;
       border-top: 1px dashed #bbb;
       font-size: 8pt;
@@ -238,10 +263,13 @@ export async function GET(req: NextRequest) {
       }
       .page-container {
         margin: 0;
-        padding: 15mm 20mm;
+        padding: 12mm 18mm;
         box-shadow: none;
         max-width: 100%;
         min-height: auto;
+      }
+      .kop-image {
+        max-width: 100% !important;
       }
     }
   </style>
@@ -251,8 +279,8 @@ export async function GET(req: NextRequest) {
     <div class="toolbar-title">
       <span>📄</span>
       <span>Dokumen Resmi SPTJM PIN Kemdiktisaintek</span>
-      <span style="font-size: 11px; opacity: 0.7; font-weight: normal; margin-left: 8px;">
-        (${totalStudents} Mahasiswa · SK: ${decreeNumber || "-"})
+      <span style="font-size: 11px; opacity: 0.8; font-weight: normal; margin-left: 8px;">
+        (SK: ${decreeNumber || "-"} · Yudisium: ${resolvedDateLabel}${totalStudents > 0 ? ` · ${totalStudents} Mahasiswa` : ""})
       </span>
     </div>
     <div class="toolbar-actions">
@@ -267,11 +295,17 @@ export async function GET(req: NextRequest) {
   </div>
 
   <div class="page-container">
-    <div class="kop-surat">
-      <div class="kop-yayasan">YAYASAN PENDIDIKAN MANAJEMEN INDONESIA (YAPMI)</div>
-      <div class="kop-pt">SEKOLAH TINGGI ILMU MANAJEMEN INDONESIA (STIMI) YAPMI MAKASSAR</div>
-      <div class="kop-sk">Status Terakreditasi BAN-PT · Kode PT: 093046</div>
-      <div class="kop-alamat">Jl. Danau Tanjung Bunga No. 1, Kota Makassar, Sulawesi Selatan · Website: stimiyapmim.ac.id</div>
+    <div class="kop-container">
+      ${
+        kopBase64
+          ? `<img src="${kopBase64}" alt="Kop Surat STIMI YAPMI Makassar" class="kop-image" />`
+          : `<div class="kop-fallback">
+              <div class="kop-yayasan">YAYASAN PENDIDIKAN MANAJEMEN INDONESIA (YAPMI)</div>
+              <div class="kop-pt">SEKOLAH TINGGI ILMU MANAJEMEN INDONESIA (STIMI) YAPMI MAKASSAR</div>
+              <div class="kop-sk">Status Terakreditasi BAN-PT · Kode PT: 093046</div>
+              <div class="kop-alamat">Jl. Danau Tanjung Bunga No. 1, Kota Makassar, Sulawesi Selatan · Website: stimiyapmim.ac.id</div>
+            </div>`
+      }
     </div>
 
     <div class="title-doc">
@@ -309,7 +343,7 @@ export async function GET(req: NextRequest) {
 
       <ol class="pernyataan-list">
         <li>
-          Mahasiswa yang diusulkan penerbitan Nomor Ijazah Nasional (PISN/PIN) sejumlah <strong>${totalStudents} (${totalStudents > 0 ? totalStudents : "……"}) orang mahasiswa</strong>${decreeNumber ? ` berdasarkan Keputusan Yudisium Tanggal ${resolvedDateLabel} Nomor: <strong>${decreeNumber}</strong>` : ""} merupakan benar mahasiswa Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar;
+          Mahasiswa yang diusulkan penerbitan Nomor Ijazah Nasional (PISN/PIN) sesuai Surat Keputusan Yudisium Tanggal ${resolvedDateLabel} Nomor: <strong>${decreeNumber || "...................."}</strong> merupakan benar mahasiswa Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar;
         </li>
         <li>
           Mahasiswa tersebut telah menyelesaikan proses pembelajaran sesuai dengan Standar Nasional Pendidikan Tinggi (SN-Dikti) dan/atau ketentuan yang ditetapkan oleh Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar; dan
