@@ -24,6 +24,10 @@ import {
   EyeOff,
   Check,
   Info,
+  Save,
+  Award,
+  MapPin,
+  Globe,
 } from "lucide-react";
 
 interface AdminUser {
@@ -34,6 +38,19 @@ interface AdminUser {
   status: string;
   createdAt: string;
   lastLoginAt?: string;
+}
+
+interface InstitutionSettings {
+  leaderName: string;
+  leaderNidn: string;
+  leaderPangkat: string;
+  leaderTitle: string;
+  institutionName: string;
+  institutionCode: string;
+  accreditation: string;
+  city: string;
+  address: string;
+  website: string;
 }
 
 interface AdminSettingsViewProps {
@@ -63,6 +80,22 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  // Institution & Signatory Settings State
+  const [instSettings, setInstSettings] = useState<InstitutionSettings>({
+    leaderName: "Dr. Ibrahim Syah SE., MM.",
+    leaderNidn: "0918066801",
+    leaderPangkat: "Asisten Ahli/III.b",
+    leaderTitle: "Ketua STIMI YAPMI Makassar",
+    institutionName: "Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar",
+    institutionCode: "093046",
+    accreditation: "Terakreditasi BAN-PT",
+    city: "Makassar",
+    address: "Jl. Danau Tanjung Bunga No. 1, Kota Makassar",
+    website: "stimiyapmim.ac.id",
+  });
+  const [isInstLoading, setIsInstLoading] = useState(false);
+  const [isInstSaving, setIsInstSaving] = useState(false);
+
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
@@ -78,9 +111,51 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
     }
   };
 
+  const fetchInstitutionSettings = async () => {
+    setIsInstLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/institution");
+      const json = await res.json();
+      if (json.success && json.settings) {
+        setInstSettings(json.settings);
+      }
+    } catch (e) {
+      console.error("Gagal mengambil data konfigurasi lembaga:", e);
+    } finally {
+      setIsInstLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchInstitutionSettings();
   }, []);
+
+  const handleSaveInstitution = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsInstSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch("/api/v1/admin/institution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(instSettings),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Gagal menyimpan identitas institusi.");
+      }
+
+      setSuccessMsg(json.message || "Data identitas penandatangan & lembaga berhasil disimpan.");
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || "Terjadi kesalahan saat menyimpan identitas institusi.");
+    } finally {
+      setIsInstSaving(false);
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -672,81 +747,295 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
       {/* SUB-TAB 2: IDENTITAS LEMBAGA & KOP DOKUMEN                            */}
       {/* ===================================================================== */}
       {activeSubTab === "institution" && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-xs space-y-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+        <form onSubmit={handleSaveInstitution} className="space-y-6">
+          {/* Header Bar */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                 <span>Identitas Lembaga & Pejabat Penandatangan Resmi</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Data institusi ini digunakan secara otomatis pada berkas Lampiran SK Yudisium dan Surat Pernyataan Tanggung Jawab Mutlak (SPTJM) PIN.
+                Data pejabat penandatangan dan institusi ini digunakan secara otomatis pada berkas Lampiran SK Yudisium dan SPTJM PISN Kemdiktisaintek.
               </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchInstitutionSettings}
+                disabled={isInstLoading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                title="Muat ulang data konfigurasi dari server"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isInstLoading ? "animate-spin text-teal-500" : ""}`} />
+                <span>Muat Ulang</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isInstSaving}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/25 transition cursor-pointer disabled:opacity-50"
+              >
+                {isInstSaving ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5" />
+                    <span>Simpan Pengaturan</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Pratinjau KOP Resmi dalam Box Kertas Cetak */}
-          <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <span>Pratinjau KOP Surat Resmi STIMI YAPMI Makassar</span>
-              </span>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
-                public/kop-stimi.jpg
-              </span>
+          {/* Form Fields: Grid 2 Kolom */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Bagian 1: Pejabat Penandatangan */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-white/5">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+                  <User className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Pejabat Penandatangan SK / SPTJM
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pimpinan perguruan tinggi yang bertindak atas nama instansi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Nama Lengkap & Gelar */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nama Lengkap & Gelar Akademik <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={instSettings.leaderName}
+                  onChange={(e) => setInstSettings({ ...instSettings, leaderName: e.target.value })}
+                  placeholder="Contoh: Dr. Ibrahim Syah SE., MM."
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Dicetak pada baris tanda tangan dan tabel identitas SPTJM.
+                </span>
+              </div>
+
+              {/* NIDN & Pangkat */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    NIDN (Nomor Induk Dosen) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={instSettings.leaderNidn}
+                    onChange={(e) => setInstSettings({ ...instSettings, leaderNidn: e.target.value })}
+                    placeholder="Contoh: 0918066801"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white font-mono font-semibold focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Dicetak di bawah nama tanda tangan (NIDN. XXXXXXXX).
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Pangkat / Golongan <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={instSettings.leaderPangkat}
+                    onChange={(e) => setInstSettings({ ...instSettings, leaderPangkat: e.target.value })}
+                    placeholder="Contoh: Asisten Ahli/III.b"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Jenjang kepangkatan resmi LLDIKTI.
+                  </span>
+                </div>
+              </div>
+
+              {/* Jabatan Resmi */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Jabatan Pemimpin Perguruan Tinggi <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={instSettings.leaderTitle}
+                  onChange={(e) => setInstSettings({ ...instSettings, leaderTitle: e.target.value })}
+                  placeholder="Contoh: Ketua STIMI YAPMI Makassar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                />
+              </div>
             </div>
 
-            <div className="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex justify-center">
-              <Image
-                src="/kop-stimi.jpg"
-                alt="Kop STIMI YAPMI Makassar"
-                width={572}
-                height={113}
-                className="w-full max-w-[560px] h-auto object-contain"
-              />
+            {/* Bagian 2: Data Lembaga Perguruan Tinggi */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-white/5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Data Lembaga Perguruan Tinggi
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Identitas resmi perguruan tinggi di PDDIKTI / Kemdiktisaintek.
+                  </p>
+                </div>
+              </div>
+
+              {/* Nama Perguruan Tinggi */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nama Resmi Perguruan Tinggi <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={instSettings.institutionName}
+                  onChange={(e) => setInstSettings({ ...instSettings, institutionName: e.target.value })}
+                  placeholder="Contoh: Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                />
+              </div>
+
+              {/* Kode PT & Kota */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Kode PT (PDDIKTI) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={instSettings.institutionCode}
+                    onChange={(e) => setInstSettings({ ...instSettings, institutionCode: e.target.value })}
+                    placeholder="Contoh: 093046"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Kota Penandatangan <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={instSettings.city}
+                    onChange={(e) => setInstSettings({ ...instSettings, city: e.target.value })}
+                    placeholder="Contoh: Makassar"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Alamat Kampus */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Alamat Kampus
+                </label>
+                <input
+                  type="text"
+                  value={instSettings.address}
+                  onChange={(e) => setInstSettings({ ...instSettings, address: e.target.value })}
+                  placeholder="Contoh: Jl. Danau Tanjung Bunga No. 1, Kota Makassar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Kartu Grid Data Lembaga */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/30 space-y-1">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Nama Perguruan Tinggi:</span>
-              <p className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
-                STIMI YAPMI Makassar
-              </p>
-              <span className="text-[10.5px] text-slate-500">Sekolah Tinggi Ilmu Manajemen Indonesia</span>
+          {/* Pratinjau KOP & Tanda Tangan */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Kop Surat (7 Kolom) */}
+            <div className="lg:col-span-7 p-5 rounded-3xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Pratinjau KOP Surat Resmi (public/kop-stimi.jpg)
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-300/60 dark:border-teal-700">
+                  Embed Otomatis ke SPTJM
+                </span>
+              </div>
+              <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex justify-center">
+                <Image
+                  src="/kop-stimi.jpg"
+                  alt="Kop STIMI YAPMI Makassar"
+                  width={572}
+                  height={113}
+                  className="w-full max-w-[520px] h-auto object-contain"
+                />
+              </div>
             </div>
 
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/30 space-y-1">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Kode PT (PDDIKTI):</span>
-              <p className="text-base font-black text-slate-900 dark:text-white font-mono">
-                093046
-              </p>
-              <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                <span>Terdaftar di Kemdiktisaintek</span>
-              </span>
-            </div>
+            {/* Live Tanda Tangan SPTJM (5 Kolom) */}
+            <div className="lg:col-span-5 p-5 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Pratinjau Tanda Tangan SPTJM
+                </span>
+                <span className="text-[10px] text-slate-400">Format Kertas Dikti</span>
+              </div>
 
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/30 space-y-1">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Ketua STIMI (Penandatangan):</span>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                Dr. H. Ibrahim, S.E., M.Si.
-              </p>
-              <span className="text-[10.5px] text-slate-500">Penandatangan SPTJM Bermeterai</span>
-            </div>
+              <div className="p-4 rounded-2xl bg-amber-50/30 dark:bg-slate-800/60 border border-amber-200/50 dark:border-white/5 font-serif text-center space-y-1">
+                <p className="text-xs text-slate-700 dark:text-slate-300">
+                  {instSettings.city || "Makassar"},{" "}
+                  {new Date().toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+                <p className="text-xs text-slate-700 dark:text-slate-300">
+                  {instSettings.leaderTitle || "Ketua STIMI YAPMI Makassar"},
+                </p>
+                <div className="h-14 flex items-center justify-center text-[11px] text-slate-300 dark:text-slate-600 italic">
+                  (Area Tanda Tangan Fisik & Cap Basah)
+                </div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white underline">
+                  {instSettings.leaderName || "Dr. Ibrahim Syah SE., MM."}
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-sans font-semibold">
+                  NIDN. {instSettings.leaderNidn || "0918066801"}
+                </p>
+              </div>
 
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/30 space-y-1">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Akreditasi & Kampus:</span>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                Terakreditasi BAN-PT
-              </p>
-              <span className="text-[10.5px] text-slate-500 truncate block">
-                Jl. Danau Tanjung Bunga No. 1, Makassar
-              </span>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={isInstSaving}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/25 transition cursor-pointer disabled:opacity-50"
+                >
+                  {isInstSaving ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Menyimpan Perubahan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Simpan Identitas Penandatangan</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </form>
       )}
 
       {/* ===================================================================== */}

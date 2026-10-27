@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import { getInstitutionSettings } from "@/lib/institution";
 
 function formatIndoDate(d?: Date | string | null): string {
   if (!d) return "-";
@@ -23,9 +24,21 @@ export async function GET(req: NextRequest) {
   const dateStr = searchParams.get("dateStr") || "";
   const decreeNumber = searchParams.get("decreeNumber") || "";
   const countParam = searchParams.get("count");
-  const leaderName = searchParams.get("leaderName") || "Dr. H. Ibrahim, S.E., M.Si.";
-  const leaderTitle = searchParams.get("leaderTitle") || "Ketua STIMI YAPMI Makassar";
-  const sptjmNumber = searchParams.get("sptjmNumber") || (decreeNumber ? `SPTJM/${decreeNumber}` : "……/SPTJM/STIMI-YAPMI/……/2026");
+
+  // Baca konfigurasi identitas penandatangan & institusi dari pengaturan sistem
+  const inst = getInstitutionSettings();
+
+  const leaderName = searchParams.get("leaderName") || inst.leaderName;
+  const leaderNidn = searchParams.get("leaderNidn") || inst.leaderNidn;
+  const leaderPangkat = searchParams.get("leaderPangkat") || inst.leaderPangkat;
+  const leaderTitle = searchParams.get("leaderTitle") || inst.leaderTitle;
+  const institutionName = inst.institutionName;
+  const institutionCode = inst.institutionCode;
+  const institutionCity = inst.city || "Makassar";
+
+  const sptjmNumber =
+    searchParams.get("sptjmNumber") ||
+    (decreeNumber ? `SPTJM/${decreeNumber}` : "……/SPTJM/STIMI-YAPMI/……/2026");
 
   let totalStudents = countParam ? parseInt(countParam, 10) : 0;
   let resolvedDateLabel = dateStr ? formatIndoDate(dateStr) : formatIndoDate(new Date());
@@ -203,7 +216,7 @@ export async function GET(req: NextRequest) {
       vertical-align: top;
     }
     .identitas-table td:first-child {
-      width: 170px;
+      width: 175px;
     }
     .identitas-table td:nth-child(2) {
       width: 15px;
@@ -219,39 +232,21 @@ export async function GET(req: NextRequest) {
       line-height: 1.65;
     }
     .footer-ttd {
-      margin-top: 35px;
+      margin-top: 40px;
       display: flex;
       justify-content: flex-end;
     }
     .ttd-box {
-      width: 250px;
+      width: 270px;
       text-align: center;
       font-size: 11pt;
     }
-    .materai-box {
-      width: 110px;
-      height: 70px;
-      border: 1px dashed #666;
-      margin: 16px auto 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8.5pt;
-      color: #555;
-      font-family: sans-serif;
-      background: #fafafa;
+    .ttd-space {
+      height: 75px;
     }
     .ttd-name {
       font-weight: bold;
       text-decoration: underline;
-    }
-    .notes-box {
-      margin-top: 45px;
-      padding-top: 10px;
-      border-top: 1px dashed #bbb;
-      font-size: 8pt;
-      color: #666;
-      font-family: sans-serif;
     }
 
     @media print {
@@ -302,8 +297,8 @@ export async function GET(req: NextRequest) {
           : `<div class="kop-fallback">
               <div class="kop-yayasan">YAYASAN PENDIDIKAN MANAJEMEN INDONESIA (YAPMI)</div>
               <div class="kop-pt">SEKOLAH TINGGI ILMU MANAJEMEN INDONESIA (STIMI) YAPMI MAKASSAR</div>
-              <div class="kop-sk">Status Terakreditasi BAN-PT · Kode PT: 093046</div>
-              <div class="kop-alamat">Jl. Danau Tanjung Bunga No. 1, Kota Makassar, Sulawesi Selatan · Website: stimiyapmim.ac.id</div>
+              <div class="kop-sk">Status Terakreditasi BAN-PT · Kode PT: ${institutionCode}</div>
+              <div class="kop-alamat">${inst.address} · Website: ${inst.website}</div>
             </div>`
       }
     </div>
@@ -323,6 +318,16 @@ export async function GET(req: NextRequest) {
           <td><strong>${leaderName}</strong></td>
         </tr>
         <tr>
+          <td>NIDN</td>
+          <td>:</td>
+          <td>${leaderNidn}</td>
+        </tr>
+        <tr>
+          <td>Pangkat / Golongan</td>
+          <td>:</td>
+          <td>${leaderPangkat}</td>
+        </tr>
+        <tr>
           <td>Jabatan</td>
           <td>:</td>
           <td>${leaderTitle}</td>
@@ -330,12 +335,12 @@ export async function GET(req: NextRequest) {
         <tr>
           <td>Perguruan Tinggi</td>
           <td>:</td>
-          <td>Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar</td>
+          <td>${institutionName}</td>
         </tr>
         <tr>
           <td>Kode Perguruan Tinggi</td>
           <td>:</td>
-          <td>093046</td>
+          <td>${institutionCode}</td>
         </tr>
       </table>
 
@@ -343,10 +348,10 @@ export async function GET(req: NextRequest) {
 
       <ol class="pernyataan-list">
         <li>
-          Mahasiswa yang diusulkan penerbitan Nomor Ijazah Nasional (PISN/PIN) sesuai Surat Keputusan Yudisium Tanggal ${resolvedDateLabel} Nomor: <strong>${decreeNumber || "...................."}</strong> merupakan benar mahasiswa Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar;
+          Mahasiswa yang diusulkan penerbitan Nomor Ijazah Nasional (PISN/PIN) sesuai Surat Keputusan Yudisium Tanggal ${resolvedDateLabel} Nomor: <strong>${decreeNumber || "...................."}</strong> merupakan benar mahasiswa ${institutionName};
         </li>
         <li>
-          Mahasiswa tersebut telah menyelesaikan proses pembelajaran sesuai dengan Standar Nasional Pendidikan Tinggi (SN-Dikti) dan/atau ketentuan yang ditetapkan oleh Sekolah Tinggi Ilmu Manajemen Indonesia (STIMI) YAPMI Makassar; dan
+          Mahasiswa tersebut telah menyelesaikan proses pembelajaran sesuai dengan Standar Nasional Pendidikan Tinggi (SN-Dikti) dan/atau ketentuan yang ditetapkan oleh ${institutionName}; dan
         </li>
         <li>
           Bertanggung jawab penuh terhadap kebenaran data yang diusulkan dalam proses penerbitan Nomor Ijazah Nasional (PISN/PIN) pada Kementerian Pendidikan Tinggi, Sains, dan Teknologi.
@@ -357,19 +362,14 @@ export async function GET(req: NextRequest) {
 
       <div class="footer-ttd">
         <div class="ttd-box">
-          <p>Makassar, ${todayStr}</p>
+          <p>${institutionCity}, ${todayStr}</p>
           <p style="margin-top: 4px;">${leaderTitle},</p>
           
-          <div class="materai-box">
-            Materai<br>Rp. 10.000
-          </div>
+          <div class="ttd-space"></div>
 
           <p class="ttd-name">${leaderName}</p>
+          <p style="font-size: 10.5pt; margin-top: 3px;">NIDN. ${leaderNidn}</p>
         </div>
-      </div>
-
-      <div class="notes-box">
-        Catatan: Surat Pernyataan Tanggung Jawab Mutlak (SPTJM) ini ditandatangani oleh Pemimpin PT (Ketua STIMI YAPMI Makassar) di atas meterai Rp 10.000 sebagai lampiran wajib usulan penerbitan Nomor Ijazah Nasional (PIN) pada portal Ditjen Diktiristek/Kemdiktisaintek.
       </div>
     </div>
   </div>
