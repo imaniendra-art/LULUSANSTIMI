@@ -34,6 +34,23 @@ interface StudentSKItem {
   foundInDb: boolean;
 }
 
+// Menghitung default Semester & Tahun Akademik berdasarkan tanggal yudisium
+function inferDefaultAcademicYear(dateStr?: string | null): string {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const year = isNaN(d.getFullYear()) ? new Date().getFullYear() : d.getFullYear();
+  const month = isNaN(d.getMonth()) ? new Date().getMonth() + 1 : d.getMonth() + 1; // 1-12
+
+  // Bulan 3-8 = Genap (Tahun lalu/Tahun ini)
+  // Bulan 9-2 = Ganjil (Tahun ini/Tahun depan)
+  if (month >= 3 && month <= 8) {
+    return `SEMESTER GENAP TA ${year - 1}/${year}`;
+  } else if (month >= 9) {
+    return `SEMESTER GANJIL TA ${year}/${year + 1}`;
+  } else {
+    return `SEMESTER GANJIL TA ${year - 1}/${year}`;
+  }
+}
+
 interface SKGroup {
   groupKey: string;
   dateStr: string;
@@ -77,6 +94,8 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
   // Editing decree number state per dateStr
   const [editingSk, setEditingSk] = useState<Record<string, string>>({});
   const [savingSkDate, setSavingSkDate] = useState<string | null>(null);
+  // Editing semester & academic year state per groupKey
+  const [editingAcademicYears, setEditingAcademicYears] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
 
@@ -86,6 +105,7 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
     setErrorMsg(null);
     setExpandedGroups({});
     setEditingSk({});
+    setEditingAcademicYears({});
   };
 
   const toggleGroup = (key: string) => {
@@ -278,7 +298,7 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Unggah file Excel hasil ekspor PISN Dikti untuk membuat 3 berkas per SK: 1. Lampiran SK (.xlsx), 2. Berkas Usulan PISN (No, NIM), 3. Cetak SPTJM Resmi
+                Unggah file Excel hasil ekspor PISN Dikti untuk membuat 4 berkas resmi per SK: 1. SK Yudisium (PDF), 2. Lampiran SK (.xlsx/PDF), 3. Berkas Usulan PISN (No, NIM), 4. Cetak SPTJM Resmi
               </p>
             </div>
           </div>
@@ -459,23 +479,26 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                 </div>
               )}
 
-              {/* 3 Berkas Output Info Banner */}
+              {/* 4 Berkas Output Info Banner */}
               <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                   <span className="font-bold text-teal-950 dark:text-teal-200">
-                    3 Berkas Lengkap Siap Ekspor per Kelompok SK untuk Permintaan PISN Dikti:
+                    4 Berkas Resmi Lengkap Siap Ekspor per Kelompok SK untuk Permintaan PISN Dikti:
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-semibold">
+                  <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/20">
+                    1. SK Yudisium (PDF Resmi)
+                  </span>
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
-                    1. Lampiran SK (.xlsx 9 Kolom)
+                    2. Lampiran SK (.xlsx 9 Kolom)
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/20">
-                    2. Berkas PISN (No, NIM)
+                    3. Berkas PISN (No, NIM)
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-teal-500/15 text-teal-800 dark:text-teal-300 border border-teal-500/20">
-                    3. SPTJM Resmi (Cetak/PDF)
+                    4. SPTJM Resmi (Cetak/PDF)
                   </span>
                 </div>
               </div>
@@ -506,7 +529,7 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                     >
                       {/* Header Group */}
                       <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="w-6 h-6 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 font-bold font-mono text-xs flex items-center justify-center">
                               {idx + 1}
@@ -520,33 +543,64 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-slate-400">Nomor SK:</span>
-                            {group.hasDecreeNumber ? (
-                              <span className="font-mono font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-white/10">
-                                {group.decreeNumber}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400 text-[11px]">
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                <span>Nomor SK Belum Diisi</span>
-                              </span>
-                            )}
+                          <div className="flex items-center gap-4 text-xs flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-400">Nomor SK:</span>
+                              {group.hasDecreeNumber ? (
+                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-white/10">
+                                  {group.decreeNumber}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400 text-[11px]">
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                  <span>Nomor SK Belum Diisi</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-400">Semester & TA:</span>
+                              <input
+                                type="text"
+                                value={editingAcademicYears[group.groupKey] ?? inferDefaultAcademicYear(group.dateStr)}
+                                onChange={(e) =>
+                                  setEditingAcademicYears((prev) => ({
+                                    ...prev,
+                                    [group.groupKey]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Contoh: SEMESTER GENAP TA 2025/2026"
+                                className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 font-mono font-bold text-slate-800 dark:text-slate-200 text-xs min-w-[230px] focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                title="Dapat disesuaikan jika berbeda dengan perkiraan tanggal yudisium"
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        {/* Action Buttons Header: 3 Berkas Wajib PISN */}
+                        {/* Action Buttons Header: 4 Berkas Wajib PISN */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* 1. Unduh Lampiran SK (.xlsx & Cetak/PDF) */}
+                          {/* 1. SK Yudisium Utama (Cetak/PDF) */}
+                          <a
+                            href={`/api/v1/pisn/sk-decree?dateStr=${group.dateStr}&decreeNumber=${encodeURIComponent(group.decreeNumber)}&academicYear=${encodeURIComponent(editingAcademicYears[group.groupKey] || inferDefaultAcademicYear(group.dateStr))}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-sm shadow-rose-600/20 transition cursor-pointer"
+                            title="1. Dokumen Surat Keputusan (SK) Yudisium Resmi Ketua STIMI YAPMI Makassar lengkap KOP, Konsideran, Diktum, TTD & Tembusan"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>1. SK Yudisium (PDF)</span>
+                          </a>
+
+                          {/* 2. Unduh Lampiran SK (.xlsx & Cetak/PDF) */}
                           <div className="inline-flex rounded-xl shadow-sm shadow-emerald-600/20 overflow-hidden border border-emerald-600/30">
                             <button
                               type="button"
                               onClick={() => handleDownloadExcel(group)}
                               className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer"
-                              title="1. Lampiran SK: Format 9 kolom Excel (.xlsx) sesuai standar Dikti"
+                              title="2. Lampiran SK: Format 9 kolom Excel (.xlsx) sesuai standar Dikti"
                             >
                               <FileSpreadsheet className="h-4 w-4" />
-                              <span>1. Lampiran SK (.xlsx)</span>
+                              <span>2. Lampiran SK (.xlsx)</span>
                             </button>
                             <a
                               href={`/api/v1/pisn/lampiran-sk?dateStr=${group.dateStr}&decreeNumber=${encodeURIComponent(group.decreeNumber)}`}
@@ -560,16 +614,16 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                             </a>
                           </div>
 
-                          {/* 2. Berkas Permintaan PISN (No, NIM) */}
+                          {/* 3. Berkas Permintaan PISN (No, NIM) */}
                           <div className="inline-flex rounded-xl shadow-sm shadow-indigo-600/20 overflow-hidden border border-indigo-600/30">
                             <button
                               type="button"
                               onClick={() => handleDownloadPisnList(group, "xlsx")}
                               className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer"
-                              title="2. Berkas Permintaan PISN: Format 2 kolom (No, NIM) Excel untuk diunggah ke portal PISN Dikti"
+                              title="3. Berkas Permintaan PISN: Format 2 kolom (No, NIM) Excel untuk diunggah ke portal PISN Dikti"
                             >
                               <FileText className="h-4 w-4" />
-                              <span>2. File PISN (No, NIM)</span>
+                              <span>3. File PISN (No, NIM)</span>
                             </button>
                             <button
                               type="button"
@@ -581,16 +635,16 @@ export function GeneratePisnModal({ isOpen, onClose, onSuccess }: GeneratePisnMo
                             </button>
                           </div>
 
-                          {/* 3. Cetak / Unduh SPTJM */}
+                          {/* 4. Cetak / Unduh SPTJM */}
                           <a
                             href={`/api/v1/pisn/sptjm?dateStr=${group.dateStr}&decreeNumber=${encodeURIComponent(group.decreeNumber)}&count=${group.totalStudents}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm shadow-teal-600/20 transition cursor-pointer"
-                            title="3. SPTJM Resmi: Surat Pernyataan Tanggung Jawab Mutlak bermeterai untuk dicetak/disimpan PDF"
+                            title="4. SPTJM Resmi: Surat Pernyataan Tanggung Jawab Mutlak bermeterai untuk dicetak/disimpan PDF"
                           >
                             <Printer className="h-4 w-4" />
-                            <span>3. Cetak SPTJM</span>
+                            <span>4. Cetak SPTJM</span>
                           </a>
 
                           {/* Toggle Expand */}
