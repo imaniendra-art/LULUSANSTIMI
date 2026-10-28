@@ -250,7 +250,7 @@ async function run() {
           pisnNumber: s.pisnNumber,
           certificateNumber: s.certificateNumber,
           pisnBatchNumber: s.pisnBatchNumber,
-          yudisiumDate: s.yudisiumDate,
+          // JANGAN menimpa yudisiumDate dengan Tanggal Generate Belmawa
           graduationYear: s.graduationYear,
         },
       });
