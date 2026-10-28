@@ -1,19 +1,28 @@
 import { PrismaClient } from "@prisma/client";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const passwordHash = crypto.createHash("sha256").update("makassar123").digest("hex");
+
   const admin = await prisma.user.upsert({
-    where: { email: "baak@stimi-yapmi.ac.id" },
-    update: {},
-    create: {
-      email: "baak@stimi-yapmi.ac.id",
-      nim: "ADMIN001",
-      role: "ADMIN_BAAK",
+    where: { email: "imaniendra@gmail.com" },
+    update: {
+      nim: "iman",
+      role: "SUPERADMIN",
       status: "ACTIVE",
+      passwordHash,
+    },
+    create: {
+      email: "imaniendra@gmail.com",
+      nim: "iman",
+      role: "SUPERADMIN",
+      status: "ACTIVE",
+      passwordHash,
     },
   });
-  console.log("Admin BAAK ready:", admin.email, admin.role);
+  console.log("Superadmin Iman ready:", admin.email, admin.nim, admin.role);
 }
 
 main()

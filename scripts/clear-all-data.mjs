@@ -1,25 +1,28 @@
 import { PrismaClient } from "@prisma/client";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("=== Mengosongkan Seluruh Data Alumni STIMI YAPMI ===");
+  console.log("=== Mengosongkan Seluruh Data & Transaksi LULUSANSTIMI ===");
 
   // 1. Hitung sebelum dihapus
   const countLegalization = await prisma.legalizationRequest.count();
   const countTracer = await prisma.tracerResponse.count();
+  const countSessions = await prisma.tracerSession.count();
   const countLogs = await prisma.integrationLog.count();
   const countAlumni = await prisma.alumni.count();
-  const countAlumniUsers = await prisma.user.count({ where: { role: "ALUMNI" } });
+  const countUsers = await prisma.user.count();
 
   console.log(`Ditemukan:`);
   console.log(`- ${countAlumni} data Alumni`);
   console.log(`- ${countLegalization} Permohonan Legalisir`);
   console.log(`- ${countTracer} Respon Tracer Study`);
+  console.log(`- ${countSessions} Sesi Tracer Study`);
   console.log(`- ${countLogs} Log Integrasi`);
-  console.log(`- ${countAlumniUsers} Akun User Alumni`);
+  console.log(`- ${countUsers} Akun Pengguna`);
 
-  // 2. Hapus data berelasi
+  // 2. Hapus data berelasi dan operasional
   console.log("\nMenghapus data...");
   const delLegal = await prisma.legalizationRequest.deleteMany({});
   console.log(`✔ Terhapus ${delLegal.count} permohonan legalisir`);
@@ -27,31 +30,53 @@ async function main() {
   const delTracer = await prisma.tracerResponse.deleteMany({});
   console.log(`✔ Terhapus ${delTracer.count} respon tracer`);
 
+  const delSessions = await prisma.tracerSession.deleteMany({});
+  console.log(`✔ Terhapus ${delSessions.count} sesi tracer`);
+
   const delLogs = await prisma.integrationLog.deleteMany({});
   console.log(`✔ Terhapus ${delLogs.count} log integrasi`);
 
   const delAlumni = await prisma.alumni.deleteMany({});
   console.log(`✔ Terhapus ${delAlumni.count} data alumni`);
 
-  const delUsers = await prisma.user.deleteMany({ where: { role: "ALUMNI" } });
-  console.log(`✔ Terhapus ${delUsers.count} akun pengguna alumni`);
-
-  // 3. Pastikan Admin BAAK tetap ada
-  const adminBaak = await prisma.user.upsert({
-    where: { email: "baak@stimi-yapmi.ac.id" },
-    update: {},
-    create: {
-      email: "baak@stimi-yapmi.ac.id",
-      nim: "ADMIN001",
-      role: "ADMIN_BAAK",
-      status: "ACTIVE",
+  // Hapus semua akun user kecuali super admin iman
+  const delUsers = await prisma.user.deleteMany({
+    where: {
+      NOT: {
+        OR: [
+          { email: "imaniendra@gmail.com" },
+          { nim: "iman" },
+          { nim: "IMANIENDRA" },
+        ],
+      },
     },
   });
-  console.log(`✔ Akun Admin BAAK tetap aman: ${adminBaak.email} (${adminBaak.role})`);
+  console.log(`✔ Terhapus ${delUsers.count} akun pengguna non-iman`);
+
+  // 3. Pastikan Akun Superadmin Iman tetap ada dan aktif
+  const passwordHash = crypto.createHash("sha256").update("makassar123").digest("hex");
+  const imanAdmin = await prisma.user.upsert({
+    where: { email: "imaniendra@gmail.com" },
+    update: {
+      nim: "iman",
+      role: "SUPERADMIN",
+      status: "ACTIVE",
+      passwordHash,
+    },
+    create: {
+      email: "imaniendra@gmail.com",
+      nim: "iman",
+      role: "SUPERADMIN",
+      status: "ACTIVE",
+      passwordHash,
+    },
+  });
+  console.log(`✔ Akun Superadmin Iman siap: ${imanAdmin.email} (${imanAdmin.nim}) - ${imanAdmin.role}`);
 
   // 4. Verifikasi sisa data
   const finalAlumniCount = await prisma.alumni.count();
-  console.log(`\nStatus Akhir: ${finalAlumniCount} data Alumni di database (BERSIH 100%).`);
+  const finalUsersCount = await prisma.user.count();
+  console.log(`\nStatus Akhir: ${finalAlumniCount} Alumni, ${finalUsersCount} Superadmin User (BERSIH 100%).`);
 }
 
 main()
