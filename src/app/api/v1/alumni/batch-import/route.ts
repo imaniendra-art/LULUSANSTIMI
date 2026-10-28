@@ -832,14 +832,40 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < Math.min(rows.length, 25); i++) {
           const row = rows[i];
           if (!Array.isArray(row)) continue;
+
+          let tempNim = -1;
+          let tempName = -1;
+          let tempPisn = -1;
+          let tempBatch = -1;
+
           for (let j = 0; j < row.length; j++) {
             const colName = String(row[j] || "").toLowerCase().trim();
-            if (valIsNim(colName)) nimIdx = j;
-            if (colName.includes("nama") || colName.includes("mahasiswa")) nameIdx = j;
-            if (colName.includes("nomor ijazah") || colName.includes("no ijazah") || colName.includes("pisn") || colName.includes("pin")) pisnIdx = j;
-            if (colName.includes("batch") || colName.includes("gelombang") || colName === "no. batch" || colName === "no batch") batchIdx = j;
+            if (valIsNim(colName)) tempNim = j;
+            if (colName.includes("nama") || colName.includes("mahasiswa")) tempName = j;
+            if (colName.includes("nomor ijazah") || colName.includes("no ijazah") || colName.includes("pisn") || colName.includes("pin")) tempPisn = j;
+            if (
+              colName === "batch" ||
+              colName === "no. batch" ||
+              colName === "no batch" ||
+              colName === "nomor batch" ||
+              colName === "kode batch" ||
+              colName === "batch pisn" ||
+              colName.includes("gelombang")
+            ) {
+              tempBatch = j;
+            }
           }
-          if (nimIdx !== -1 && pisnIdx !== -1) {
+
+          if (tempNim !== -1 && tempPisn !== -1) {
+            nimIdx = tempNim;
+            nameIdx = tempName;
+            pisnIdx = tempPisn;
+            // Pastikan batchIdx tidak merujuk ke kolom NIM atau kolom PISN
+            if (tempBatch !== -1 && tempBatch !== tempNim && tempBatch !== tempPisn) {
+              batchIdx = tempBatch;
+            } else {
+              batchIdx = -1;
+            }
             startRow = i + 1;
             break;
           }
@@ -874,9 +900,10 @@ export async function POST(request: NextRequest) {
 
           // Deteksi Nomor Batch dari kolom atau header
           let rowBatch = "";
-          if (batchIdx !== -1 && row[batchIdx]) {
+          if (batchIdx !== -1 && batchIdx !== nimIdx && row[batchIdx]) {
             const bVal = String(row[batchIdx]).trim();
-            if (bVal && bVal !== "-" && bVal.toLowerCase() !== "null") {
+            // Cegah nilai batch sama dengan NIM atau tanda strip
+            if (bVal && bVal !== "-" && bVal.toLowerCase() !== "null" && bVal !== nim) {
               rowBatch = bVal;
             }
           }
@@ -899,7 +926,12 @@ export async function POST(request: NextRequest) {
             const existing = alumniByNim.get(nim);
 
             if (existing) {
-              const finalBatch = rowBatch || existing.pisnBatchNumber || null;
+              // Jika existing.pisnBatchNumber tercemar nilai NIM mahasiswa, bersihkan
+              const existingBatchValid =
+                existing.pisnBatchNumber && existing.pisnBatchNumber !== nim
+                  ? existing.pisnBatchNumber
+                  : null;
+              const finalBatch = rowBatch || existingBatchValid || null;
               await prisma.alumni.update({
                 where: { nim },
                 data: {
@@ -934,7 +966,7 @@ export async function POST(request: NextRequest) {
                   thesisTitle: "",
                   pisnNumber,
                   certificateNumber: pisnNumber,
-                  pisnBatchNumber: batchNumberFromHeader || null,
+                  pisnBatchNumber: rowBatch || batchNumberFromHeader || null,
                   graduationSource: "YUDISIUM_NON_WISUDA",
                 },
               });
