@@ -43,11 +43,40 @@ export async function saveDecreePdf(decreeNumber: string, buffer: Buffer, origin
 export function getDecreePdfPath(decreeNumber: string): { exists: boolean; absolutePath: string; relativePath: string } {
   ensureStorageDirs();
   const safeName = sanitizeSkNumber(decreeNumber);
+  const targetDir = path.join(BASE_STORAGE_DIR, "sk-yudisium");
   const fileName = `SK_${safeName}.pdf`;
-  const absolutePath = path.join(BASE_STORAGE_DIR, "sk-yudisium", fileName);
+  const absolutePath = path.join(targetDir, fileName);
   const relativePath = path.posix.join("storage/uploads/sk-yudisium", fileName);
+
+  if (fs.existsSync(absolutePath)) {
+    return {
+      exists: true,
+      absolutePath,
+      relativePath,
+    };
+  }
+
+  // Fallback: cari di targetDir yang cocok secara case-insensitive atau normalisasi alphanumeric
+  if (fs.existsSync(targetDir)) {
+    const files = fs.readdirSync(targetDir);
+    const targetNormalized = safeName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    for (const f of files) {
+      if (f.endsWith(".pdf") && f.startsWith("SK_")) {
+        const key = f.replace(/^SK_/, "").replace(/\.pdf$/, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (key === targetNormalized) {
+          const matchAbs = path.join(targetDir, f);
+          return {
+            exists: true,
+            absolutePath: matchAbs,
+            relativePath: path.posix.join("storage/uploads/sk-yudisium", f),
+          };
+        }
+      }
+    }
+  }
+
   return {
-    exists: fs.existsSync(absolutePath),
+    exists: false,
     absolutePath,
     relativePath,
   };

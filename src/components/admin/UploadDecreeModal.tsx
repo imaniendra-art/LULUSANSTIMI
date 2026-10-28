@@ -279,7 +279,7 @@ export function UploadDecreeModal({
 
               {currentUploaded && (
                 <a
-                  href={`/api/v1/yudisium-decree/preview?skNumber=${encodeURIComponent(decreeNumber)}`}
+                  href={`/api/v1/yudisium-decree/preview?sk=${encodeURIComponent(decreeNumber)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 text-xs font-bold hover:bg-emerald-100 transition cursor-pointer"

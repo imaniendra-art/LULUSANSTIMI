@@ -5,13 +5,19 @@ import { getDecreePdfPath } from "@/lib/storage";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const sk = searchParams.get("sk");
+    const sk = (
+      searchParams.get("skNumber") ||
+      searchParams.get("sk") ||
+      searchParams.get("decreeNumber") ||
+      searchParams.get("nomorSk") ||
+      ""
+    ).trim();
 
     if (!sk) {
       return NextResponse.json({ error: "Nomor SK tidak ditentukan" }, { status: 400 });
     }
 
-    const { exists, absolutePath, relativePath } = getDecreePdfPath(sk);
+    const { exists, absolutePath } = getDecreePdfPath(sk);
 
     if (!exists) {
       return NextResponse.json(

@@ -2208,7 +2208,7 @@ function AdminConsoleContent() {
                         <td className="py-2.5 px-2">
                           {isDecreeUploaded ? (
                             <a
-                              href={`/api/v1/yudisium-decree/preview?skNumber=${encodeURIComponent(alumni.yudisiumDecreeNumber || "")}`}
+                              href={`/api/v1/yudisium-decree/preview?sk=${encodeURIComponent(alumni.yudisiumDecreeNumber || "")}`}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-xs cursor-pointer"
