@@ -183,10 +183,10 @@ export default function PublicPortalPage() {
                 <Link
                   href="/login"
                   className="px-4 py-2.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/70 dark:hover:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-semibold text-xs sm:text-sm rounded-xl sm:rounded-2xl border border-teal-200/90 dark:border-teal-500/30 transition flex items-center justify-center gap-1.5 flex-shrink-0 shadow-xs cursor-pointer group"
-                  title="Masuk ke Portal Staf BAAK"
+                  title="Login ke Sistem"
                 >
                   <Lock className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 group-hover:rotate-12 transition duration-200" />
-                  <span>Login BAAK</span>
+                  <span>Login</span>
                 </Link>
               </div>
             </form>
@@ -397,7 +397,7 @@ export default function PublicPortalPage() {
                     className="text-teal-700 dark:text-teal-300 hover:underline font-semibold inline-flex items-center gap-1 text-xs"
                     title="Kelola arsip ini di portal BAAK"
                   >
-                    <span>Portal BAAK</span>
+                    <span>Login</span>
                     <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>

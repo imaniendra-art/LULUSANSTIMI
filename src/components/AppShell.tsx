@@ -300,7 +300,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 shadow-sm border border-teal-400/40 transition cursor-pointer group"
           >
             <Lock className="h-3.5 w-3.5 text-teal-200 group-hover:rotate-12 transition duration-200" />
-            <span>Login Staf</span>
+            <span>Login</span>
           </Link>
         </div>
       </header>
@@ -351,7 +351,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200/80 dark:border-teal-500/30 bg-teal-50/70 dark:bg-teal-950/70 hover:bg-teal-100/70 dark:hover:bg-teal-900/60 text-teal-900 dark:text-teal-200 font-semibold text-xs transition shadow-xs"
             >
               <Lock className="h-3 w-3 text-teal-600 dark:text-teal-400" />
-              <span>Portal BAAK</span>
+              <span>Login</span>
             </Link>
           </div>
         </div>

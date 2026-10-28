@@ -75,7 +75,7 @@ export default function LoginPage() {
               LULUSAN<span className="text-teal-600 dark:text-teal-400">STIMI</span>
             </span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100/70 dark:bg-teal-950/90 text-teal-800 dark:text-teal-300 border border-teal-300/70 dark:border-teal-500/30">
-              PORTAL BAAK
+              LOGIN
             </span>
           </div>
         </Link>
@@ -162,7 +162,7 @@ export default function LoginPage() {
             <div className="p-6 sm:p-8 lg:p-9 flex flex-col justify-center bg-white dark:bg-[#041d21]">
               <div className="mb-5">
                 <h2 className="text-lg sm:text-xl font-bold text-teal-950 dark:text-white tracking-tight">
-                  Masuk ke Akun Staf
+                  Login
                 </h2>
                 <p className="text-xs text-teal-800/70 dark:text-teal-300/70 mt-1">
                   Silakan masukkan email atau username dan kata sandi Anda.
@@ -180,14 +180,14 @@ export default function LoginPage() {
                 {/* Identifier Input */}
                 <div>
                   <label className="block text-xs font-semibold text-teal-950 dark:text-teal-100 mb-1">
-                    Email Staf / Username
+                    Email / Username
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-3 h-4 w-4 text-teal-500/70" />
                     <input
                       type="text"
                       required
-                      placeholder="contoh: baak@stimi-yapmi.ac.id"
+                      placeholder="nama@stimi-yapmi.ac.id"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-teal-50/50 dark:bg-[#02181c] border border-teal-200/90 dark:border-teal-500/30 rounded-xl text-xs text-teal-950 dark:text-white placeholder-teal-700/50 dark:placeholder-teal-300/40 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition"
@@ -239,7 +239,7 @@ export default function LoginPage() {
                     </span>
                   ) : (
                     <>
-                      <span>Masuk ke Sistem</span>
+                      <span>Login</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -249,7 +249,7 @@ export default function LoginPage() {
               {/* Help & Return Link */}
               <div className="mt-5 pt-4 border-t border-teal-100 dark:border-teal-500/20 space-y-3 text-center">
                 <p className="text-[11px] text-teal-700/80 dark:text-teal-300/70">
-                  Lupa kata sandi atau butuh akses akun baru? Hubungi BAAK atau Administrator.
+                  Lupa kata sandi atau butuh akses akun baru? Hubungi Administrator.
                 </p>
 
                 <Link
