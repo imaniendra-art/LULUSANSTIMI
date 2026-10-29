@@ -127,9 +127,35 @@ export function AdminSettingsView({ currentUser, onRefresh }: AdminSettingsViewP
   };
 
   useEffect(() => {
-    fetchUsers();
-    fetchInstitutionSettings();
-  }, []);
+    if (currentUser?.role === "SUPERADMIN") {
+      fetchUsers();
+      fetchInstitutionSettings();
+    }
+  }, [currentUser]);
+
+  if (currentUser && currentUser.role !== "SUPERADMIN") {
+    return (
+      <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#071719] border border-amber-300 dark:border-amber-500/30 shadow-xl text-center max-w-xl mx-auto my-12 space-y-4">
+        <div className="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+          <Lock className="h-8 w-8" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            Akses Pengaturan Terkunci
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            Halaman Pengaturan Sistem, Pengelolaan Akun, dan Identitas Dokumen dibatasi khusus untuk pengguna dengan hak akses <strong className="text-amber-600 dark:text-amber-400 font-bold">Superadmin</strong>.
+          </p>
+          <div className="pt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10">
+            <span>Peran Akun:</span>
+            <span className="font-bold text-teal-600 dark:text-teal-400">
+              {currentUser.role}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSaveInstitution = async (e: React.FormEvent) => {
     e.preventDefault();

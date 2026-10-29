@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session || session.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Akses ditolak. Fitur ini hanya untuk Superadmin." }, { status: 403 });
+    }
+
     const users = await prisma.user.findMany({
       where: {
         role: { in: ["ADMIN_BAAK", "SUPERADMIN"] },
@@ -35,6 +41,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Akses ditolak. Hanya Superadmin yang dapat membuat akun admin." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { email, nim, password, role } = body;
 
@@ -99,6 +110,11 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Akses ditolak. Hanya Superadmin yang dapat menghapus akun admin." }, { status: 403 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const id = searchParams.get("id");
 
@@ -133,6 +149,11 @@ export async function DELETE(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Akses ditolak. Hanya Superadmin yang dapat mengubah data akun admin." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { id, password, role, status } = body;
 

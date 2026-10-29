@@ -5,6 +5,7 @@ import {
   getInstitutionSettings,
   institutionConfigFilePath,
 } from "@/lib/institution";
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
   const settings = getInstitutionSettings();
@@ -13,6 +14,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== "SUPERADMIN") {
+      return NextResponse.json(
+        { error: "Akses ditolak. Hanya Superadmin yang dapat mengubah identitas institusi dan penandatangan." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const current = getInstitutionSettings();
 

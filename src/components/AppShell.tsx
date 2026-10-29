@@ -29,6 +29,18 @@ function AdminHeader({
   const searchParams = useSearchParams();
   const tab = searchParams?.get("tab");
   const filter = searchParams?.get("filter");
+  const [sessionUser, setSessionUser] = React.useState<{ email: string; fullName: string; role: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/v1/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.authenticated && d.user) {
+          setSessionUser(d.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const breadcrumbTitle = !tab
     ? "Dashboard BAAK"
@@ -39,7 +51,7 @@ function AdminHeader({
     : tab === "berkas"
     ? "Menu Ijazah & SK Yudisium — Berkas Scan & Dokumen Keputusan Ketua"
     : tab === "settings"
-    ? "Pengaturan Sistem — Akun Staf BAAK & Identitas Dokumen"
+    ? (sessionUser?.role === "SUPERADMIN" ? "Pengaturan Sistem — Akun Staf BAAK & Identitas Dokumen" : "Akses Dibatasi — Pengaturan Sistem")
     : "Konsol BAAK";
 
   const handleLogout = async () => {
@@ -101,10 +113,13 @@ function AdminHeader({
 
         <div className="hidden md:flex flex-col text-right">
           <span className="text-xs font-semibold text-teal-950 dark:text-teal-100 leading-tight">
-            Staf BAAK
+            {sessionUser?.fullName || sessionUser?.email || "Konsol Admin"}
           </span>
           <span className="text-[10px] text-teal-700 dark:text-teal-400 font-mono leading-tight">
-            STIMI YAPMI Makassar
+            <span className="flex items-center justify-end gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${sessionUser?.role === "SUPERADMIN" ? "bg-amber-500" : "bg-teal-500"}`} />
+              {sessionUser?.role === "SUPERADMIN" ? "Superadmin" : "Staf BAAK"} · STIMI YAPMI
+            </span>
           </span>
         </div>
 

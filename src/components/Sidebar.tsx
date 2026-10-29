@@ -57,6 +57,18 @@ export function Sidebar({
 
   const tabParam = searchParams?.get("tab") || "";
   const filterParam = searchParams?.get("filter") || "";
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.user?.role) {
+          setCurrentUserRole(data.user.role);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -146,13 +158,17 @@ export function Sidebar({
       ],
     },
     {
-      title: "PENGATURAN SISTEM",
+      title: currentUserRole === "SUPERADMIN" ? "PENGATURAN SISTEM" : "SESI AKUN",
       items: [
-        {
-          name: "Pengaturan Sistem",
-          href: "/admin?tab=settings",
-          icon: Settings,
-        },
+        ...(currentUserRole === "SUPERADMIN"
+          ? [
+              {
+                name: "Pengaturan Sistem",
+                href: "/admin?tab=settings",
+                icon: Settings,
+              },
+            ]
+          : []),
         {
           name: "Keluar Sesi Admin",
           href: "#",
