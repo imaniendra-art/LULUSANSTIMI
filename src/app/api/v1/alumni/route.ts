@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { saveUploadedFile } from "@/lib/storage";
+import { saveUploadedFile, listAllUploadedDecrees, isDecreePdfUploaded } from "@/lib/storage";
 import { invalidateStatsCache } from "@/lib/statsCache";
 import { inferCohortYearFromNim, isCohortBelow2020 } from "@/lib/cohort";
 
@@ -251,7 +251,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: items,
+      data: (() => {
+        const decreeMap = listAllUploadedDecrees();
+        return items.map((item) => ({
+          ...item,
+          hasDecreePdf: Boolean(item.yudisiumDecreeNumber && isDecreePdfUploaded(item.yudisiumDecreeNumber, decreeMap)),
+        }));
+      })(),
       meta: {
         page,
         limit,

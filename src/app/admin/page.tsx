@@ -86,6 +86,7 @@ interface AlumniRecord {
   personalEmail?: string;
   ijazahScan?: StoredFile | null;
   transkripScan?: StoredFile | null;
+  hasDecreePdf?: boolean;
 }
 
 interface StatsData {
@@ -271,7 +272,7 @@ function AdminConsoleContent() {
 
   const fetchDecrees = async () => {
     try {
-      const res = await fetch("/api/v1/yudisium-decree");
+      const res = await fetch("/api/v1/yudisium-decree", { cache: "no-store" });
       const json = await res.json();
       if (json.success && json.decrees) {
         setUploadedDecrees(json.decrees);
@@ -282,6 +283,40 @@ function AdminConsoleContent() {
   };
 
   const getSafeKey = (sk?: string) => (sk || "").replace(/[/\\?%*:|"<>]/g, "_").trim();
+
+  const checkIsDecreeUploaded = (alumni: AlumniRecord) => {
+    if (alumni.hasDecreePdf) return true;
+    if (!alumni.yudisiumDecreeNumber) return false;
+    const sk = alumni.yudisiumDecreeNumber.trim();
+    const safeKey = getSafeKey(sk);
+    if (uploadedDecrees[safeKey]) return true;
+
+    const targetNorm = safeKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (targetNorm) {
+      for (const k of Object.keys(uploadedDecrees)) {
+        if (k.toLowerCase().replace(/[^a-z0-9]/g, "") === targetNorm) {
+          return true;
+        }
+      }
+    }
+
+    if (alumni.yudisiumDate && stats?.yudisiumSkMap) {
+      const dateStr = alumni.yudisiumDate.split("T")[0];
+      const mappedSk = stats.yudisiumSkMap[dateStr];
+      if (mappedSk) {
+        const mappedSafe = getSafeKey(mappedSk);
+        if (uploadedDecrees[mappedSafe]) return true;
+        const mappedNorm = mappedSafe.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (mappedNorm) {
+          for (const k of Object.keys(uploadedDecrees)) {
+            if (k.toLowerCase().replace(/[^a-z0-9]/g, "") === mappedNorm) return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
 
   const [editingThesisId, setEditingThesisId] = useState<string | null>(null);
   const [editingThesisTitle, setEditingThesisTitle] = useState<string>("");
@@ -448,6 +483,7 @@ function AdminConsoleContent() {
   }, []);
 
   useEffect(() => {
+    fetchDecrees();
     if (tabParam === "skripsi" || filterParam === "skripsi") {
       setActiveTableTab("skripsi");
       setPisnFilter("");
@@ -604,9 +640,10 @@ function AdminConsoleContent() {
       params.set("page", currentPage.toString());
       params.set("limit", pageSize.toString());
 
-      const [resAlumni, resStats] = await Promise.all([
-        fetch(`/api/v1/alumni?${params.toString()}`),
-        fetch("/api/v1/alumni/stats"),
+      const [resAlumni, resStats, resDecrees] = await Promise.all([
+        fetch(`/api/v1/alumni?${params.toString()}`, { cache: "no-store" }),
+        fetch("/api/v1/alumni/stats", { cache: "no-store" }),
+        fetch("/api/v1/yudisium-decree", { cache: "no-store" }),
       ]);
 
       if (resAlumni.ok) {
@@ -620,6 +657,12 @@ function AdminConsoleContent() {
       if (resStats.ok) {
         const jsonStats = await resStats.json();
         setStats(jsonStats.stats);
+      }
+      if (resDecrees.ok) {
+        const jsonDecrees = await resDecrees.json();
+        if (jsonDecrees.success && jsonDecrees.decrees) {
+          setUploadedDecrees(jsonDecrees.decrees);
+        }
       }
     } catch (err) {
       console.error("Fetch data error:", err);
@@ -1086,6 +1129,8 @@ function AdminConsoleContent() {
       {mainTab === "dashboard" && (
         <DashboardView
           stats={stats}
+          uploadedDecrees={uploadedDecrees}
+          onRefreshDecrees={fetchDecrees}
           currentUser={currentUser}
           onSwitchTab={handleSwitchTab}
           onOpenAdd={handleOpenAdd}
@@ -2152,7 +2197,7 @@ function AdminConsoleContent() {
                 ) : (
                   graduates.map((alumni, idx) => {
                     const skKey = getSafeKey(alumni.yudisiumDecreeNumber || "");
-                    const isDecreeUploaded = Boolean(uploadedDecrees[skKey]);
+                    const isDecreeUploaded = checkIsDecreeUploaded(alumni);
 
                     return (
                       <tr
@@ -2208,7 +2253,7 @@ function AdminConsoleContent() {
                         <td className="py-2.5 px-2">
                           {isDecreeUploaded ? (
                             <a
-                              href={`/api/v1/yudisium-decree/preview?sk=${encodeURIComponent(alumni.yudisiumDecreeNumber || "")}`}
+                              href={`/api/v1/yudisium-decree/preview?sk=${encodeURIComponent(alumni.yudisiumDecreeNumber || (alumni.yudisiumDate ? stats?.yudisiumSkMap?.[alumni.yudisiumDate.split("T")[0]] : "") || "")}`}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-xs cursor-pointer"

@@ -117,10 +117,14 @@ interface DashboardViewProps {
   onFilterFileStatus?: (status: string) => void;
   onOpenSiamModal?: () => void;
   onRefreshData?: () => void;
+  uploadedDecrees?: Record<string, { fileName: string; size: number }>;
+  onRefreshDecrees?: () => void;
 }
 
 export function DashboardView({
   stats,
+  uploadedDecrees: propUploadedDecrees,
+  onRefreshDecrees,
   onSwitchTab,
   onOpenAdd,
   onFilterYudisium,
@@ -147,10 +151,11 @@ export function DashboardView({
   const [isGeneratePisnOpen, setIsGeneratePisnOpen] = useState(false);
   const [selectedDecreeForUpload, setSelectedDecreeForUpload] = useState("");
   const [uploadedDecrees, setUploadedDecrees] = useState<Record<string, { fileName: string; size: number }>>({});
+  const activeUploadedDecrees = { ...uploadedDecrees, ...(propUploadedDecrees || {}) };
 
   const fetchDecrees = async () => {
     try {
-      const res = await fetch("/api/v1/yudisium-decree");
+      const res = await fetch("/api/v1/yudisium-decree", { cache: "no-store" });
       const json = await res.json();
       if (json.success && json.decrees) {
         setUploadedDecrees(json.decrees);
@@ -644,7 +649,11 @@ export function DashboardView({
                 const count = stats.yudisiumCounts?.[dateStr] || 0;
                 const sk = stats.yudisiumSkMap?.[dateStr] || "-";
                 const safeKey = getSafeKey(sk);
-                const hasPdf = !!uploadedDecrees[safeKey];
+                const targetNorm = safeKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+                const hasPdf = Boolean(
+                  activeUploadedDecrees[safeKey] ||
+                  (targetNorm && Object.keys(activeUploadedDecrees).some((k) => k.toLowerCase().replace(/[^a-z0-9]/g, "") === targetNorm))
+                );
 
                 return (
                   <div
@@ -803,6 +812,8 @@ export function DashboardView({
         }}
         onSuccess={() => {
           fetchDecrees();
+          onRefreshDecrees?.();
+          onRefreshData?.();
           onRefreshData?.();
         }}
       />
@@ -845,6 +856,8 @@ export function DashboardView({
         onClose={() => setIsUploadDecreeModalOpen(false)}
         onSuccess={() => {
           fetchDecrees();
+          onRefreshDecrees?.();
+          onRefreshData?.();
         }}
         initialDecreeNumber={selectedDecreeForUpload}
         knownDecrees={knownDecreesList}
@@ -869,6 +882,8 @@ export function DashboardView({
         }}
         onSuccess={() => {
           fetchDecrees();
+          onRefreshDecrees?.();
+          onRefreshData?.();
           onRefreshData?.();
         }}
       />

@@ -82,6 +82,23 @@ export function getDecreePdfPath(decreeNumber: string): { exists: boolean; absol
   };
 }
 
+export function isDecreePdfUploaded(sk: string, decreeMap?: Record<string, any>): boolean {
+  if (!sk) return false;
+  const safeName = sanitizeSkNumber(sk);
+  const map = decreeMap || listAllUploadedDecrees();
+  if (map[safeName]) return true;
+
+  // Case-insensitive / normalized check
+  const targetNorm = safeName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!targetNorm) return false;
+  for (const k of Object.keys(map)) {
+    if (k.toLowerCase().replace(/[^a-z0-9]/g, "") === targetNorm) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function listAllUploadedDecrees(): Record<string, { fileName: string; size: number; uploadedAt: string }> {
   ensureStorageDirs();
   const targetDir = path.join(BASE_STORAGE_DIR, "sk-yudisium");
